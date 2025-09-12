@@ -19,9 +19,10 @@ interface LogMessage {
 export const useWebSocketStore = create<WebSocketState>((set) => ({
   isConnected: false,
   logs: [],
-  addLog: (log) => set((state) => ({
-    logs: [...state.logs, log].slice(-100), // Keep last 100 logs
-  })),
+  addLog: (log) =>
+    set((state) => ({
+      logs: [...state.logs, log].slice(-100), // Keep last 100 logs
+    })),
   clearLogs: () => set({ logs: [] }),
 }));
 
@@ -40,21 +41,23 @@ export function useWebSocket() {
     ws.current = new WebSocket(wsUrl);
 
     ws.current.onopen = () => {
-      console.log('WebSocket connected');
+      console.info('WebSocket connected');
       setIsConnected(true);
       useWebSocketStore.setState({ isConnected: true });
 
       // Subscribe to all events
-      ws.current?.send(JSON.stringify({
-        type: 'subscribe',
-        events: ['*'],
-      }));
+      ws.current?.send(
+        JSON.stringify({
+          type: 'subscribe',
+          events: ['*'],
+        }),
+      );
     };
 
     ws.current.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
+
         // Handle different event types
         switch (data.type) {
           case 'log.message':
@@ -63,22 +66,24 @@ export function useWebSocket() {
               ...data.payload,
             });
             break;
-            
+
           case 'tools.changed':
             // Trigger React Query refetch
             window.dispatchEvent(new CustomEvent('tools-changed'));
             break;
-            
+
           case 'server.connected':
           case 'server.disconnected':
             // Trigger React Query refetch
             window.dispatchEvent(new CustomEvent('servers-changed'));
             break;
-            
+
           case 'tool.executing':
           case 'tool.result':
             // Handle tool execution events
-            window.dispatchEvent(new CustomEvent('tool-event', { detail: data }));
+            window.dispatchEvent(
+              new CustomEvent('tool-event', { detail: data }),
+            );
             break;
         }
       } catch (error) {
@@ -91,7 +96,7 @@ export function useWebSocket() {
     };
 
     ws.current.onclose = () => {
-      console.log('WebSocket disconnected');
+      console.info('WebSocket disconnected');
       setIsConnected(false);
       useWebSocketStore.setState({ isConnected: false });
 

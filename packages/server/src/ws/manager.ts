@@ -1,6 +1,6 @@
 import { WebSocket } from 'ws';
 import { WSMessageSchema, type WSEvent } from '../types/index.js';
-import type { MCPProxy } from '@mcp-funnel/core';
+import type { MCPProxy } from 'mcp-funnel';
 
 interface Client {
   ws: WebSocket;
@@ -19,11 +19,11 @@ export class WebSocketManager {
   handleConnection(ws: WebSocket) {
     const client: Client = {
       ws,
-      subscriptions: new Set(['*']) // Subscribe to all events by default
+      subscriptions: new Set(['*']), // Subscribe to all events by default
     };
 
     this.clients.add(client);
-    console.log('WebSocket client connected');
+    console.info('WebSocket client connected');
 
     // Send initial state
     this.sendInitialState(client);
@@ -32,26 +32,30 @@ export class WebSocketManager {
       try {
         const message = JSON.parse(data.toString());
         const parsed = WSMessageSchema.safeParse(message);
-        
+
         if (!parsed.success) {
-          ws.send(JSON.stringify({ 
-            error: 'Invalid message format',
-            details: parsed.error 
-          }));
+          ws.send(
+            JSON.stringify({
+              error: 'Invalid message format',
+              details: parsed.error,
+            }),
+          );
           return;
         }
 
         this.handleMessage(client, parsed.data);
-      } catch (error) {
-        ws.send(JSON.stringify({ 
-          error: 'Failed to parse message' 
-        }));
+      } catch (_error) {
+        ws.send(
+          JSON.stringify({
+            error: 'Failed to parse message',
+          }),
+        );
       }
     });
 
     ws.on('close', () => {
       this.clients.delete(client);
-      console.log('WebSocket client disconnected');
+      console.info('WebSocket client disconnected');
     });
 
     ws.on('error', (error) => {
@@ -91,8 +95,8 @@ export class WebSocketManager {
         toolName: payload.toolName,
         arguments: payload.arguments,
         requestId,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
 
     try {
@@ -103,7 +107,7 @@ export class WebSocketManager {
 
       const result = await mapping.client.callTool({
         name: mapping.originalName,
-        arguments: payload.arguments
+        arguments: payload.arguments,
       });
 
       // Send result event
@@ -114,8 +118,8 @@ export class WebSocketManager {
           requestId,
           result,
           duration: Date.now() - startTime,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     } catch (error) {
       // Send error event
@@ -127,8 +131,8 @@ export class WebSocketManager {
           result: null,
           error: error instanceof Error ? error.message : 'Unknown error',
           duration: Date.now() - startTime,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     }
   }
@@ -140,22 +144,24 @@ export class WebSocketManager {
         type: 'server.connected',
         payload: {
           serverName: name,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       };
       client.ws.send(JSON.stringify(event));
     }
 
     // Send current tools
     const tools = [];
-    for (const [fullName, { serverName, tool }] of this.mcpProxy.toolDefinitionCache) {
+    for (const [fullName, { serverName, tool }] of this.mcpProxy
+      .toolDefinitionCache) {
       tools.push({
         name: fullName,
         description: tool.description,
         inputSchema: tool.inputSchema,
         serverName,
-        enabled: this.mcpProxy.dynamicallyEnabledTools.has(fullName) || 
-                 !this.mcpProxy.config.enableDynamicDiscovery
+        enabled:
+          this.mcpProxy.dynamicallyEnabledTools.has(fullName) ||
+          !this.mcpProxy.config.enableDynamicDiscovery,
       });
     }
 
@@ -164,8 +170,8 @@ export class WebSocketManager {
         type: 'tools.changed',
         payload: {
           tools,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       };
       client.ws.send(JSON.stringify(event));
     }
@@ -178,7 +184,7 @@ export class WebSocketManager {
 
   broadcast(event: WSEvent) {
     const message = JSON.stringify(event);
-    
+
     for (const client of this.clients) {
       if (this.matchesSubscription(client, event.type)) {
         if (client.ws.readyState === WebSocket.OPEN) {
@@ -191,7 +197,7 @@ export class WebSocketManager {
   private matchesSubscription(client: Client, eventType: string): boolean {
     if (client.subscriptions.has('*')) return true;
     if (client.subscriptions.has(eventType)) return true;
-    
+
     // Check wildcard patterns (e.g., 'tool.*' matches 'tool.executing')
     for (const subscription of client.subscriptions) {
       if (subscription.endsWith('*')) {
@@ -199,19 +205,23 @@ export class WebSocketManager {
         if (eventType.startsWith(prefix)) return true;
       }
     }
-    
+
     return false;
   }
 
-  sendLog(level: 'info' | 'warn' | 'error' | 'debug', message: string, source: string) {
+  sendLog(
+    level: 'info' | 'warn' | 'error' | 'debug',
+    message: string,
+    source: string,
+  ) {
     this.broadcast({
       type: 'log.message',
       payload: {
         level,
         message,
         source,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   }
 }

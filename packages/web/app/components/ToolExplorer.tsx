@@ -10,8 +10,8 @@ export function ToolExplorer() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['tools', search],
-    queryFn: () => search ? api.tools.search(search) : api.tools.list(),
-    keepPreviousData: true,
+    queryFn: () => (search ? api.tools.search(search) : api.tools.list()),
+    placeholderData: (previousData) => previousData,
   });
 
   // Refetch on WebSocket events
@@ -62,7 +62,7 @@ export function ToolExplorer() {
                 'p-3 rounded-lg border cursor-pointer transition-colors',
                 selectedTool?.name === tool.name
                   ? 'bg-accent border-primary'
-                  : 'hover:bg-secondary'
+                  : 'hover:bg-secondary',
               )}
               onClick={() => setSelectedTool(tool)}
             >
@@ -87,7 +87,7 @@ export function ToolExplorer() {
                     'text-xs px-2 py-1 rounded transition-colors',
                     tool.enabled
                       ? 'bg-green-500/20 text-green-700 hover:bg-green-500/30'
-                      : 'bg-muted hover:bg-muted/80'
+                      : 'bg-muted hover:bg-muted/80',
                   )}
                 >
                   {tool.enabled ? 'Enabled' : 'Disabled'}
@@ -107,7 +107,7 @@ export function ToolExplorer() {
                     <button
                       onClick={() => {
                         const textarea = document.getElementById(
-                          `args-${tool.name}`
+                          `args-${tool.name}`,
                         ) as HTMLTextAreaElement;
                         let args = {};
                         if (textarea.value) {
@@ -131,7 +131,7 @@ export function ToolExplorer() {
                     <div className="mt-4 p-3 rounded bg-muted">
                       <h5 className="text-xs font-medium mb-1">Result:</h5>
                       <pre className="text-xs overflow-auto">
-                        {JSON.stringify(executeMutation.data, null, 2)}
+                        {JSON.stringify(executeMutation.data as any, null, 2)}
                       </pre>
                     </div>
                   )}
