@@ -43,6 +43,7 @@
     "lint": "eslint --ext .ts,.tsx",
     "validate": "tsx scripts/validate.ts --fix",
     "test": "vitest run",
+    "test:e2e": "TEST_E2E=true vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -55,6 +56,8 @@
   "devDependencies": {
     "@anthropic-ai/claude-code": "^1.0.112",
     "@eslint/js": "^9.35.0",
+    "@hono/zod-validator": "^0.7.2",
+    "@tanstack/react-query-devtools": "^5.87.4",
     "@types/node": "^24.3.1",
     "@typescript-eslint/eslint-plugin": "^8.43.0",
     "@typescript-eslint/parser": "^8.43.0",
@@ -67,6 +70,7 @@
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.43.0",
+    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   },
   "prettier": {

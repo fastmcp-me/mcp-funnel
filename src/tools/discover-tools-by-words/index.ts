@@ -129,7 +129,7 @@ export class DiscoverToolsByWords implements ICoreTool {
         content: [
           {
             type: 'text',
-            text: `Found and enabled ${matches.length} tools:\n${enabledList}`,
+            text: `Found and enabled ${matches.length} tools:\n${enabledList}\n\nNote: Always call tools using the fully prefixed name exactly as listed. To run a tool next, use bridge_tool_request with {"tool":"<full_name>","arguments":{...}} and consult get_tool_schema first for required arguments.`,
           },
         ],
       };
@@ -147,14 +147,17 @@ export class DiscoverToolsByWords implements ICoreTool {
     }
 
     const matchList = matches
-      .map((m) => `- ${m.name}: ${m.description}`)
+      .map(
+        (m) =>
+          `- ${m.name}: ${m.description}\n  Example: bridge_tool_request {"tool":"${m.name}","arguments":{}}`,
+      )
       .join('\n');
 
     return {
       content: [
         {
           type: 'text',
-          text: `Found ${matches.length} matching tools:\n${matchList}\n\nUse enable=true to activate these tools.`,
+          text: `Found ${matches.length} matching tools:\n${matchList}\n\nTip: Always use the fully prefixed name when executing. Use enable=true to activate these tools if dynamic discovery is desired.`,
         },
       ],
     };

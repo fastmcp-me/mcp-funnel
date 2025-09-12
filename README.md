@@ -227,6 +227,19 @@ node dist/cli.js  # Uses .mcp-funnel.json from current directory
 node dist/cli.js /path/to/custom-config.json  # Explicit config
 ```
 
+### Development Scripts
+
+```bash
+yarn dev            # Run the development server with hot reload
+yarn build          # Build the TypeScript code
+yarn test           # Run all tests
+yarn test:e2e       # Run end-to-end tests with mock servers
+yarn validate       # Run comprehensive code quality checks (lint, typecheck, format)
+yarn lint           # Run ESLint
+yarn typecheck      # Run TypeScript type checking
+yarn format         # Auto-format code with Prettier
+```
+
 ## 🚀 Hacky Discovery Mode (Ultra-Low Context)
 
 Hacky Discovery is a workaround for Claude Code's lack of dynamic tool updates. When enabled (`hackyDiscovery: true`), MCP Funnel exposes only **3 tools** instead of 100+:
@@ -409,6 +422,18 @@ MCP Funnel prefixes each server's stderr output for debugging:
 - [ ] Metrics and performance monitoring
 - [ ] WebSocket transport support
 - [ ] Full dynamic tool discovery (blocked on Claude Code CLI support)
+
+## 🧪 Testing
+
+Run the test suite:
+
+```bash
+yarn test           # Run all tests
+yarn test:e2e       # Run end-to-end tests
+yarn validate       # Run linting, type checking, and formatting checks
+```
+
+The project includes comprehensive e2e tests simulating Claude SDK conversations with mock MCP servers.
 
 ## 🤝 Contributing
 
