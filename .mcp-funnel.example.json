@@ -1,0 +1,63 @@
+{
+  "servers": [
+    {
+      "name": "github",
+      "command": "docker",
+      "args": [
+        "run",
+        "--env-file",
+        ".env",
+        "-i",
+        "--rm",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    {
+      "name": "memory",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "env": {
+        "MCP_MEMORY_STORAGE_PATH": "~/.mcp-memory"
+      }
+    },
+    {
+      "name": "filesystem",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/path/to/allowed/directory"
+      ]
+    },
+    {
+      "name": "context7",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp",
+        "--api-key",
+        "${CONTEXT7_API_KEY}"
+      ]
+    },
+    {
+      "name": "code-reasoning",
+      "command": "npx",
+      "args": ["-y", "@mettamatt/code-reasoning"]
+    }
+  ],
+  "hideTools": [
+    "github__list_workflow_runs",
+    "github__get_workflow_run_logs",
+    "github__list_workflow_run_artifacts",
+    "github__download_workflow_run_artifact",
+    "memory__ingest_directory",
+    "memory__ingest_document",
+    "memory__debug_*",
+    "memory__dashboard_*"
+  ],
+  "exposeTools": null,
+  "enableDynamicDiscovery": false
+}

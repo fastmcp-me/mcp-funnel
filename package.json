@@ -1,0 +1,74 @@
+{
+  "name": "mcp-funnel",
+  "version": "0.0.2",
+  "description": "MCP proxy that aggregates multiple servers with tool filtering - stop carrying 70k tokens of tools you'll never use",
+  "author": "Christoph Schramm",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chris-schra/mcp-funnel.git"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "proxy",
+    "aggregator",
+    "filter"
+  ],
+  "type": "module",
+  "bin": "./dist/cli.js",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/mcp-funnel.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/mcp-funnel.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs"
+    }
+  },
+  "files": [
+    "dist/",
+    "!dist/**/*.map"
+  ],
+  "scripts": {
+    "dev": "tsx src/mcp-funnel.ts",
+    "build": "tsx build.ts",
+    "build:watch": "tsx build.ts --watch",
+    "prettier": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "lint": "eslint --ext .ts,.tsx",
+    "validate": "yarn typecheck && yarn lint && yarn prettier --write",
+    "test": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "release": "yarn npm audit && npm publish --access public"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "zod": "^4.1.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "@types/node": "^24.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.43.0",
+    "@typescript-eslint/parser": "^8.43.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "esbuild": "^0.25.9",
+    "eslint": "^9.35.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.43.0",
+    "vitest": "^3.2.4"
+  },
+  "prettier": {
+    "trailingComma": "all",
+    "tabWidth": 2,
+    "semi": true,
+    "singleQuote": true
+  },
+  "packageManager": "yarn@4.9.2"
+}

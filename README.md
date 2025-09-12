@@ -1,0 +1,377 @@
+# MCP Funnel
+
+A Model Context Protocol (MCP) proxy server that aggregates multiple MCP servers into a single interface, enabling you to use tools from multiple sources simultaneously through Claude Desktop or Claude Code CLI.
+
+## 🎯 Purpose
+
+MCP Funnel addresses two critical limitations in the current MCP ecosystem:
+
+1. **Single Server Limitation**: Claude Desktop and Claude Code CLI can only connect to one MCP server at a time
+2. **Context Bloat**: Most MCP servers expose all their tools with no filtering options, consuming valuable context space
+
+MCP Funnel enables you to:
+
+- Connect to multiple MCP servers simultaneously (GitHub, Memory, Filesystem, etc.)
+- **Fine-grained tool filtering**: Hide specific tools that you don't need
+- **Pattern-based filtering**: Use wildcards to hide entire categories of tools
+- **Reduce context usage**: Significantly decrease token consumption by exposing only necessary tools
+- Avoid tool name conflicts through automatic prefixing
+
+## 🚀 Features
+
+- **Multi-Server Aggregation**: Connect to any number of MCP servers
+- **Tool Namespacing**: Automatic prefixing prevents naming conflicts (`github__create_issue`, `memory__store_memory`)
+- **Flexible Filtering**: Show/hide tools using wildcard patterns
+- **Granular Control**: Filter individual tools that servers don't allow you to disable
+- **Context Optimization**: Reduce MCP tool context usage by 40-60% through selective filtering
+- **Custom Transports**: Supports stdio-based MCP servers (Docker, NPX, local binaries)
+- **Server Log Prefixing**: Clear identification of which server is logging what
+- **Dynamic Tool Discovery**: Experimental feature for reducing initial context usage (see limitations)
+
+## 📋 Prerequisites
+
+- Node.js 18+ and npm/yarn
+- [tsx](https://github.com/privatenumber/tsx) for running TypeScript directly
+- MCP servers you want to proxy (installed separately)
+
+## 🔧 Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/mcp-funnel.git
+cd mcp-funnel
+
+# Install dependencies
+yarn install
+
+# Create your configuration
+cp .mcp-funnel.example.json .mcp-funnel.json
+# Edit .mcp-funnel.json with your servers
+```
+
+## ⚙️ Configuration
+
+MCP Funnel supports two ways to specify configuration:
+
+1. **Implicit** (default): Looks for `.mcp-funnel.json` in the current working directory
+   ```bash
+   npx mcp-funnel  # Uses ./.mcp-funnel.json
+   ```
+
+2. **Explicit**: Specify a custom config file path
+   ```bash
+   npx mcp-funnel /path/to/config.json
+   ```
+
+Create a `.mcp-funnel.json` file in your project directory:
+
+```json
+{
+  "servers": [
+    {
+      "name": "github",
+      "command": "docker",
+      "args": [
+        "run",
+        "--env-file",
+        ".env",
+        "-i",
+        "--rm",
+        "ghcr.io/github/github-mcp-server"
+      ]
+    },
+    {
+      "name": "memory",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    {
+      "name": "filesystem",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/path/to/allowed/directory"
+      ]
+    }
+  ],
+  "hideTools": [
+    "github__list_workflow_runs",
+    "github__get_workflow_run_logs",
+    "memory__debug_*",
+    "memory__dashboard_*",
+    "github__get_team_members"
+  ],
+  "enableDynamicDiscovery": false
+}
+```
+
+### Configuration Options
+
+- **servers**: Array of MCP servers to connect to
+  - `name`: Unique identifier (used as tool prefix)
+  - `command`: Command to execute
+  - `args`: Command arguments (optional)
+  - `env`: Environment variables (optional)
+- **exposeTools**: Whitelist patterns for tools to expose (optional)
+- **hideTools**: Blacklist patterns for tools to hide (optional)
+- **enableDynamicDiscovery**: Enable experimental dynamic tool discovery (default: false)
+
+### Filtering Patterns
+
+Patterns match against the prefixed tool names (`serverName__toolName`) and support wildcards (`*`):
+
+**Individual tools:**
+
+- `github__get_team_members` - Hide specific tool from GitHub server
+- `memory__check_database_health` - Hide specific tool from Memory server
+
+**Wildcard patterns:**
+
+- `memory__dashboard_*` - All dashboard tools from Memory server
+- `github__debug_*` - All debug tools from GitHub server
+- `*__workflow_*` - All workflow-related tools from any server
+- `memory__ingest_*` - All ingestion tools from Memory server
+- `*__list_*` - All list tools from any server
+
+**Common filtering examples:**
+
+```json
+"hideTools": [
+  "memory__dashboard_*",         // Hide all dashboard tools from Memory
+  "memory__debug_*",            // Hide all debug tools from Memory
+  "memory__ingest_*",           // Hide ingestion tools from Memory
+  "github__get_team_members",   // Hide specific GitHub tool
+  "github__*_workflow_*",       // Hide workflow tools from GitHub
+  "*__list_*_artifacts"         // Hide artifact listing tools from all servers
+]
+```
+
+**Note:** Always use the server prefix (e.g., `github__`, `memory__`) to target specific servers' tools. Use `*__` at the beginning to match tools from any server.
+
+## 🚀 Usage
+
+### With Claude Code CLI 
+
+Add to your configuration (e.g. `path/to/your/project/.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "mcp-funnel": {
+      "command": "npx",
+      "args": [
+        "mcp-funnel"
+      ]
+    }
+  }
+}
+```
+
+This will use `.mcp-funnel.json` from your current working directory. To use a custom config path:
+
+```json
+{
+  "mcpServers": {
+    "mcp-funnel": {
+      "command": "npx",
+      "args": [
+        "mcp-funnel",
+        "/path/to/your/.mcp-funnel.json"
+      ]
+    }
+  }
+}
+```
+
+### With Google Gemini
+
+Add to your configuration (e.g. `path/to/your/project/.gemini/settings.json`):
+
+```json
+{
+  "mcpServers": {
+    "mcp-funnel": {
+      "command": "npx",
+      "args": [
+        "mcp-funnel"
+      ]
+    }
+  }
+}
+```
+
+### With Codex CLI
+
+Add to your configuration (e.g. `~/.codex/config.toml`):
+
+```toml
+[mcp_servers.mcp-funnel]
+command = "npx"
+args = ["mcp-funnel"]
+```
+
+### Example Prompts
+
+Once configured, you can use natural language to interact with your aggregated tools:
+
+```
+"Load PRs for https://github.com/chris-schra/mcp-funnel"
+```
+
+This works seamlessly because MCP Funnel aggregates your GitHub server's tools with proper namespacing!
+
+### Local Development
+
+```bash
+# Run from source (uses .mcp-funnel.json from current directory)
+yarn dev
+
+# Or build and test locally
+yarn build
+node dist/cli.js  # Uses .mcp-funnel.json from current directory
+node dist/cli.js /path/to/custom-config.json  # Explicit config
+```
+
+## 🔍 Dynamic Tool Discovery (Experimental)
+
+MCP Funnel includes a `discover_tools_by_words` tool that allows searching for tools by keywords. However, **this feature currently has limited utility**:
+
+### ⚠️ Current Limitations
+
+**Claude Code CLI does not support dynamic tool updates**. Once a session starts, the tool list is fixed. This means:
+
+- The `discover_tools_by_words` tool can find matching tools
+- It can "enable" them in MCP Funnel's internal state
+- But Claude won't see newly enabled tools until you restart the session
+
+We're eagerly waiting for these issues to be resolved:
+
+- [claude-code#7519](https://github.com/anthropics/claude-code/issues/7519) - Dynamic tool discovery support
+- [claude-code#4118](https://github.com/anthropics/claude-code/issues/4118) - Runtime tool updates
+
+Once these features land, dynamic discovery will significantly reduce initial context usage by loading only the tools you need on-demand.
+
+### Future Vision
+
+When dynamic updates are supported, you'll be able to:
+
+```
+User: "I need to work with GitHub issues"
+Assistant: *discovers and enables only GitHub issue tools*
+User: "Now let's store some information"
+Assistant: *discovers and enables only memory storage tools*
+```
+
+This will dramatically reduce context usage compared to loading 100+ tools upfront.
+
+## 💡 Why Use MCP Funnel?
+
+### The Context Problem
+
+A typical MCP setup might expose:
+
+- GitHub MCP: ~130 tools
+- Memory MCP: ~30 tools
+- Filesystem MCP: ~15 tools
+- **Total: 175+ tools consuming 60-70k tokens**
+
+Many of these tools are rarely used:
+
+- Workflow management tools
+- Team/organization tools
+- Debug and diagnostic tools
+- Dashboard interfaces
+- Advanced embedding operations
+
+### The MCP Funnel Solution
+
+With MCP Funnel, you can:
+
+1. **Connect multiple servers**: Use GitHub + Memory + Filesystem simultaneously
+2. **Filter out noise**: Hide tools you never use
+3. **Save context**: Reduce tool context from 70k to 30-40k tokens
+4. **Maintain control**: Unlike server-side filtering (which most don't support), you control exactly what's exposed
+
+## 🏗️ Architecture
+
+```
+┌────────────────────────┐
+│ CLI (e.g. Claude Code) │
+└──────┬─────────────────┘
+       │ MCP Protocol via stdio
+┌──────▼──────┐
+│  MCP Funnel │ ← Filtering happens here
+└──────┬──────┘
+       │
+   ┌───┴──────┬─────────┬─────────┐
+   │          │         │         │
+┌──▼────┐ ┌───▼───┐ ┌───▼───┐ ┌───▼───┐
+│GitHub │ │Memory │ │FS     │ │ ...   │ ← Each exposes all tools
+└───────┘ └───────┘ └───────┘ └───────┘
+```
+
+MCP Funnel:
+
+1. Connects to multiple MCP servers as a client
+2. Receives all tools from each server
+3. Applies your filtering rules
+4. Exposes only the filtered tools to Claude
+5. Routes tool calls to the appropriate backend server
+
+## 🐛 Troubleshooting
+
+### Server Connection Issues
+
+MCP Funnel prefixes each server's stderr output for debugging:
+
+```
+[github] Connecting to GitHub API...
+[memory] Database initialized at ~/.mcp-memory
+[filesystem] Watching directory: /Users/example
+```
+
+### Common Issues
+
+1. **Tool not found**: Check that the tool isn't filtered by `hideTools` patterns
+2. **Server fails to start**: Check the command and args in your config
+3. **Permission denied**: Ensure MCP Funnel has permission to execute server commands
+4. **Environment variables**: Use the `env` field in server config for API keys
+
+## 🔒 Security Considerations
+
+- **Never commit API keys**: Use environment variables or `.env` files (git-ignored)
+- **Filesystem access**: Be careful with filesystem server paths
+- **Docker permissions**: Ensure proper Docker socket access if using containerized servers
+- **Network isolation**: Consider running in isolated environments for sensitive operations
+
+## 🗺️ Roadmap
+
+- [ ] Connection retry logic for resilient server management
+- [ ] Health monitoring and status reporting
+- [ ] Graceful degradation when servers fail
+- [ ] Structured logging with configurable levels
+- [ ] Metrics and performance monitoring
+- [ ] WebSocket transport support
+- [ ] Full dynamic tool discovery (blocked on Claude Code CLI support)
+
+## 🤝 Contributing
+
+Contributions are welcome! Key areas needing work:
+
+1. **Error handling**: Make MCP Funnel resilient to server failures
+2. **Testing**: Add comprehensive test coverage
+3. **Logging**: Implement structured logging
+4. **Build pipeline**: Set up proper TypeScript compilation and packaging
+
+## 📄 License
+
+MIT - See LICENSE file in the repository root
+
+## 🙏 Acknowledgments
+
+Built on top of the [Model Context Protocol SDK](https://github.com/anthropics/mcp) by Anthropic.
+
+---
+
+**Note**: This is an experimental tool in active development. Production use should include proper error handling and monitoring.
