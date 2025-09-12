@@ -14,6 +14,8 @@ import { spawn, ChildProcess } from 'child_process';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { ICoreTool, CoreToolContext } from './tools/core-tool.interface.js';
 import { DiscoverToolsByWords } from './tools/discover-tools-by-words';
+import { GetToolSchema } from './tools/get-tool-schema';
+import { BridgeToolRequest } from './tools/bridge-tool-request';
 
 import Package from '../package.json';
 
@@ -127,6 +129,10 @@ export class MCPProxy {
     string,
     { serverName: string; description: string }
   > = new Map();
+  private toolDefinitionCache: Map<
+    string,
+    { serverName: string; tool: Tool }
+  > = new Map();
   private coreTools: Map<string, ICoreTool> = new Map();
 
   constructor(config: ProxyConfig) {
@@ -153,7 +159,11 @@ export class MCPProxy {
   }
 
   private registerCoreTools() {
-    const tools: ICoreTool[] = [new DiscoverToolsByWords()];
+    const tools: ICoreTool[] = [
+      new DiscoverToolsByWords(),
+      new GetToolSchema(),
+      new BridgeToolRequest(),
+    ];
 
     for (const tool of tools) {
       if (tool.isEnabled(this.config)) {
@@ -169,6 +179,8 @@ export class MCPProxy {
   private createToolContext(): CoreToolContext {
     return {
       toolDescriptionCache: this.toolDescriptionCache,
+      toolDefinitionCache: this.toolDefinitionCache,
+      toolMapping: this.toolMapping,
       dynamicallyEnabledTools: this.dynamicallyEnabledTools,
       config: this.config,
       enableTools: (toolNames: string[]) => {
@@ -257,6 +269,16 @@ export class MCPProxy {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       const allTools: Tool[] = [];
 
+      // In hacky discovery mode, only expose core tools
+      if (this.config.hackyDiscovery) {
+        for (const coreTool of this.coreTools.values()) {
+          allTools.push(coreTool.tool);
+        }
+        // Still populate the tool caches for bridge/schema tools
+        await this.populateToolCaches();
+        return { tools: allTools };
+      }
+
       // Add core tools
       for (const coreTool of this.coreTools.values()) {
         allTools.push(coreTool.tool);
@@ -269,10 +291,14 @@ export class MCPProxy {
           for (const tool of response.tools) {
             const fullToolName = `${serverName}__${tool.name}`;
 
-            // Cache tool descriptions for discovery
+            // Cache tool descriptions and definitions for discovery
             this.toolDescriptionCache.set(fullToolName, {
               serverName,
               description: tool.description || '',
+            });
+            this.toolDefinitionCache.set(fullToolName, {
+              serverName,
+              tool,
             });
 
             // Always register in toolMapping for call handling
@@ -341,6 +367,38 @@ export class MCPProxy {
         throw error;
       }
     });
+  }
+
+  private async populateToolCaches() {
+    for (const [serverName, client] of this.clients) {
+      try {
+        const response = await client.listTools();
+        for (const tool of response.tools) {
+          const fullToolName = `${serverName}__${tool.name}`;
+          
+          // Cache tool descriptions and definitions
+          this.toolDescriptionCache.set(fullToolName, {
+            serverName,
+            description: tool.description || '',
+          });
+          this.toolDefinitionCache.set(fullToolName, {
+            serverName,
+            tool,
+          });
+          
+          // Always register in toolMapping for call handling
+          this.toolMapping.set(fullToolName, {
+            client,
+            originalName: tool.name,
+          });
+        }
+      } catch (error) {
+        console.error(
+          `[proxy] Failed to cache tools from ${serverName}:`,
+          error,
+        );
+      }
+    }
   }
 
   async start() {

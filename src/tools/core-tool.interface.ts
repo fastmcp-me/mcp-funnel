@@ -1,4 +1,5 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ProxyConfig } from '../config.js';
 
 /**
@@ -10,6 +11,15 @@ export interface CoreToolContext {
     string,
     { serverName: string; description: string }
   >;
+
+  /** Cache of full tool definitions from connected MCP servers */
+  toolDefinitionCache?: Map<
+    string,
+    { serverName: string; tool: Tool }
+  >;
+
+  /** Mapping of tool names to their client and original names */
+  toolMapping?: Map<string, { client: Client; originalName: string }>;
 
   /** Set of dynamically enabled tool names */
   dynamicallyEnabledTools: Set<string>;
