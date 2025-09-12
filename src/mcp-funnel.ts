@@ -16,6 +16,7 @@ import { ICoreTool, CoreToolContext } from './tools/core-tool.interface.js';
 import { DiscoverToolsByWords } from './tools/discover-tools-by-words/index.js';
 import { GetToolSchema } from './tools/get-tool-schema/index.js';
 import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
+import { LoadToolset } from './tools/load-toolset/index.js';
 
 import Package from '../package.json';
 
@@ -161,6 +162,7 @@ export class MCPProxy {
       new DiscoverToolsByWords(),
       new GetToolSchema(),
       new BridgeToolRequest(),
+      new LoadToolset(),
     ];
 
     for (const tool of tools) {
