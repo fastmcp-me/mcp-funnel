@@ -1,0 +1,15 @@
+{
+  "servers": [
+    {
+      "name": "github",
+      "command": "node",
+      "args": ["../../e2e/mock-server-runner.js", "github"]
+    },
+    {
+      "name": "filesystem",
+      "command": "node",
+      "args": ["../../e2e/mock-server-runner.js", "filesystem"]
+    }
+  ],
+  "hackyDiscovery": false
+}

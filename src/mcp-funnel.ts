@@ -38,7 +38,7 @@ export class PrefixedStdioClientTransport {
     serverName: string,
     private options: TransportOptions,
   ) {
-    this.serverName = serverName;
+    this._serverName = serverName;
   }
 
   async start(): Promise<void> {
@@ -57,7 +57,7 @@ export class PrefixedStdioClientTransport {
 
       rl.on('line', (line: string) => {
         if (line.trim()) {
-          console.error(`[${this.serverName}] ${line}`);
+          console.error(`[${this._serverName}] ${line}`);
         }
       });
     }
@@ -76,7 +76,7 @@ export class PrefixedStdioClientTransport {
             this.messageHandlers.forEach((handler) => handler(message));
           } catch {
             // Not a JSON message, might be a log line that went to stdout
-            console.error(`[${this.serverName}] ${line}`);
+            console.error(`[${this._serverName}] ${line}`);
           }
         }
       });
@@ -120,23 +120,23 @@ export class PrefixedStdioClientTransport {
 }
 
 export class MCPProxy {
-  private server: Server;
-  private clients: Map<string, Client> = new Map();
-  private config: ProxyConfig;
-  private toolMapping: Map<string, { client: Client; originalName: string }> =
+  private _server: Server;
+  private _clients: Map<string, Client> = new Map();
+  private _config: ProxyConfig;
+  private _toolMapping: Map<string, { client: Client; originalName: string }> =
     new Map();
-  private dynamicallyEnabledTools: Set<string> = new Set();
-  private toolDescriptionCache: Map<
+  private _dynamicallyEnabledTools: Set<string> = new Set();
+  private _toolDescriptionCache: Map<
     string,
     { serverName: string; description: string }
   > = new Map();
-  private toolDefinitionCache: Map<string, { serverName: string; tool: Tool }> =
+  private _toolDefinitionCache: Map<string, { serverName: string; tool: Tool }> =
     new Map();
   private coreTools: Map<string, ICoreTool> = new Map();
 
   constructor(config: ProxyConfig) {
-    this.config = config;
-    this.server = new Server(
+    this._config = config;
+    this._server = new Server(
       {
         name: 'mcp-funnel',
         version: Package.version,
@@ -166,7 +166,7 @@ export class MCPProxy {
     ];
 
     for (const tool of tools) {
-      if (tool.isEnabled(this.config)) {
+      if (tool.isEnabled(this._config)) {
         this.coreTools.set(tool.name, tool);
         if (tool.onInit) {
           tool.onInit(this.createToolContext());
@@ -178,18 +178,18 @@ export class MCPProxy {
 
   private createToolContext(): CoreToolContext {
     return {
-      toolDescriptionCache: this.toolDescriptionCache,
-      toolDefinitionCache: this.toolDefinitionCache,
-      toolMapping: this.toolMapping,
-      dynamicallyEnabledTools: this.dynamicallyEnabledTools,
-      config: this.config,
+      toolDescriptionCache: this._toolDescriptionCache,
+      toolDefinitionCache: this._toolDefinitionCache,
+      toolMapping: this._toolMapping,
+      dynamicallyEnabledTools: this._dynamicallyEnabledTools,
+      config: this._config,
       enableTools: (toolNames: string[]) => {
         for (const toolName of toolNames) {
-          this.dynamicallyEnabledTools.add(toolName);
+          this._dynamicallyEnabledTools.add(toolName);
           console.error(`[proxy] Dynamically enabled tool: ${toolName}`);
         }
         // Send notification that the tool list has changed
-        this.server.sendToolListChanged();
+        this._server.sendToolListChanged();
         console.error(`[proxy] Sent tools/list_changed notification`);
       },
       sendNotification: async (
@@ -203,13 +203,13 @@ export class MCPProxy {
         };
         // Type assertion is required because the Server class restricts notifications to specific types,
         // but this function needs to support arbitrary custom notifications
-        this.server.notification(notification as Notification);
+        this._server.notification(notification as Notification);
       },
     };
   }
 
   private async connectToTargetServers() {
-    const connectionPromises = this.config.servers.map(async (targetServer) => {
+    const connectionPromises = this._config.servers.map(async (targetServer) => {
       const client = new Client({
         name: `proxy-client-${targetServer.name}`,
         version: '1.0.0',
@@ -222,7 +222,7 @@ export class MCPProxy {
       });
 
       await client.connect(transport);
-      this.clients.set(targetServer.name, client);
+      this._clients.set(targetServer.name, client);
       console.error(`[proxy] Connected to: ${targetServer.name}`);
     });
 
@@ -246,19 +246,19 @@ export class MCPProxy {
     const fullToolName = `${serverName}__${toolName}`;
 
     // Check if dynamically enabled
-    if (this.dynamicallyEnabledTools.has(fullToolName)) {
+    if (this._dynamicallyEnabledTools.has(fullToolName)) {
       return true;
     }
 
-    if (this.config.exposeTools) {
+    if (this._config.exposeTools) {
       // Check if tool matches any expose pattern (only checking prefixed name)
-      return this.config.exposeTools.some((pattern) =>
+      return this._config.exposeTools.some((pattern) =>
         this.matchesPattern(fullToolName, pattern),
       );
     }
-    if (this.config.hideTools) {
+    if (this._config.hideTools) {
       // Check if tool matches any hide pattern (only checking prefixed name)
-      return !this.config.hideTools.some((pattern) =>
+      return !this._config.hideTools.some((pattern) =>
         this.matchesPattern(fullToolName, pattern),
       );
     }
@@ -266,11 +266,11 @@ export class MCPProxy {
   }
 
   private setupRequestHandlers() {
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+    this._server.setRequestHandler(ListToolsRequestSchema, async () => {
       const allTools: Tool[] = [];
 
       // In hacky discovery mode, only expose core tools
-      if (this.config.hackyDiscovery) {
+      if (this._config.hackyDiscovery) {
         for (const coreTool of this.coreTools.values()) {
           allTools.push(coreTool.tool);
         }
@@ -284,7 +284,7 @@ export class MCPProxy {
         allTools.push(coreTool.tool);
       }
 
-      for (const [serverName, client] of this.clients) {
+      for (const [serverName, client] of this._clients) {
         try {
           const response = await client.listTools();
 
@@ -292,24 +292,24 @@ export class MCPProxy {
             const fullToolName = `${serverName}__${tool.name}`;
 
             // Cache tool descriptions and definitions for discovery
-            this.toolDescriptionCache.set(fullToolName, {
+            this._toolDescriptionCache.set(fullToolName, {
               serverName,
               description: tool.description || '',
             });
-            this.toolDefinitionCache.set(fullToolName, {
+            this._toolDefinitionCache.set(fullToolName, {
               serverName,
               tool,
             });
 
             // Always register in toolMapping for call handling
-            this.toolMapping.set(fullToolName, {
+            this._toolMapping.set(fullToolName, {
               client,
               originalName: tool.name,
             });
 
             // If dynamic discovery is enabled, check if tool was dynamically enabled
-            if (this.config.enableDynamicDiscovery) {
-              if (!this.dynamicallyEnabledTools.has(fullToolName)) {
+            if (this._config.enableDynamicDiscovery) {
+              if (!this._dynamicallyEnabledTools.has(fullToolName)) {
                 continue; // Skip tools not yet enabled
               }
               // Tool was dynamically enabled, add it to the list
@@ -341,7 +341,7 @@ export class MCPProxy {
       return { tools: allTools };
     });
 
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    this._server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name: toolName, arguments: toolArgs } = request.params;
 
       // Handle core tools
@@ -350,7 +350,7 @@ export class MCPProxy {
         return coreTool.handle(toolArgs ?? {}, this.createToolContext());
       }
 
-      const mapping = this.toolMapping.get(toolName);
+      const mapping = this._toolMapping.get(toolName);
       if (!mapping) {
         throw new Error(`Tool not found: ${toolName}`);
       }
@@ -370,24 +370,24 @@ export class MCPProxy {
   }
 
   private async populateToolCaches() {
-    for (const [serverName, client] of this.clients) {
+    for (const [serverName, client] of this._clients) {
       try {
         const response = await client.listTools();
         for (const tool of response.tools) {
           const fullToolName = `${serverName}__${tool.name}`;
 
           // Cache tool descriptions and definitions
-          this.toolDescriptionCache.set(fullToolName, {
+          this._toolDescriptionCache.set(fullToolName, {
             serverName,
             description: tool.description || '',
           });
-          this.toolDefinitionCache.set(fullToolName, {
+          this._toolDefinitionCache.set(fullToolName, {
             serverName,
             tool,
           });
 
           // Always register in toolMapping for call handling
-          this.toolMapping.set(fullToolName, {
+          this._toolMapping.set(fullToolName, {
             client,
             originalName: tool.name,
           });
@@ -404,8 +404,37 @@ export class MCPProxy {
   async start() {
     await this.initialize();
     const transport = new StdioServerTransport();
-    await this.server.connect(transport);
+    await this._server.connect(transport);
     console.error('[proxy] Server started successfully');
+  }
+
+  // Public getters for web UI and other integrations
+  get config() {
+    return this._config;
+  }
+
+  get clients() {
+    return this._clients;
+  }
+
+  get toolMapping() {
+    return this._toolMapping;
+  }
+
+  get dynamicallyEnabledTools() {
+    return this._dynamicallyEnabledTools;
+  }
+
+  get toolDescriptionCache() {
+    return this._toolDescriptionCache;
+  }
+
+  get toolDefinitionCache() {
+    return this._toolDefinitionCache;
+  }
+
+  get server() {
+    return this._server;
   }
 }
 

@@ -12,8 +12,9 @@
     "allowJs": true,
     "baseUrl": "./src",
     "rootDir": "./",
-    "types": ["node"]
+    "types": ["node"],
+    "jsx": "react-jsx"
   },
-  "include": ["./src/**/*.ts", "./test/**/*.ts"],
+  "include": ["./src/**/*.ts", "./test/**/*.ts", "./packages/**/*"],
   "exclude": ["**/node_modules/**/*", "**/dist/**/*"]
 }
