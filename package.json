@@ -8,6 +8,9 @@
     "type": "git",
     "url": "https://github.com/chris-schra/mcp-funnel.git"
   },
+  "workspaces": [
+    "packages/**/*"
+  ],
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -38,7 +41,7 @@
     "build:watch": "tsx build.ts --watch",
     "prettier": "prettier -c \"**/*.{ts,tsx,js,json,md}\"",
     "lint": "eslint --ext .ts,.tsx",
-    "validate": "yarn typecheck && yarn lint && yarn prettier && echo \"Validation successful.\"",
+    "validate": "tsx scripts/validate.ts --fix",
     "test": "vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
@@ -59,6 +62,7 @@
     "@vitest/ui": "^3.2.4",
     "esbuild": "^0.25.9",
     "eslint": "^9.35.0",
+    "globby": "^14.1.0",
     "prettier": "^3.6.2",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
