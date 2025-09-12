@@ -4,10 +4,7 @@ A Model Context Protocol (MCP) proxy server that aggregates multiple MCP servers
 
 ## 🎯 Purpose
 
-MCP Funnel addresses two critical limitations in the current MCP ecosystem:
-
-1. **Single Server Limitation**: Claude Desktop and Claude Code CLI can only connect to one MCP server at a time
-2. **Context Bloat**: Most MCP servers expose all their tools with no filtering options, consuming valuable context space
+Most MCP servers expose all their tools with no filtering options, consuming valuable context space
 
 MCP Funnel enables you to:
 
@@ -27,6 +24,7 @@ MCP Funnel enables you to:
 - **Custom Transports**: Supports stdio-based MCP servers (Docker, NPX, local binaries)
 - **Server Log Prefixing**: Clear identification of which server is logging what
 - **Dynamic Tool Discovery**: Experimental feature for reducing initial context usage (see limitations)
+- **Hacky Discovery Mode**: Ultra-minimal context mode exposing only 3 tools with dynamic bridging (95%+ context reduction)
 
 ## 📋 Prerequisites
 
@@ -54,6 +52,7 @@ cp .mcp-funnel.example.json .mcp-funnel.json
 MCP Funnel supports two ways to specify configuration:
 
 1. **Implicit** (default): Looks for `.mcp-funnel.json` in the current working directory
+
    ```bash
    npx mcp-funnel  # Uses ./.mcp-funnel.json
    ```
@@ -102,7 +101,8 @@ Create a `.mcp-funnel.json` file in your project directory:
     "memory__dashboard_*",
     "github__get_team_members"
   ],
-  "enableDynamicDiscovery": false
+  "enableDynamicDiscovery": false,
+  "hackyDiscovery": false
 }
 ```
 
@@ -116,6 +116,7 @@ Create a `.mcp-funnel.json` file in your project directory:
 - **exposeTools**: Whitelist patterns for tools to expose (optional)
 - **hideTools**: Blacklist patterns for tools to hide (optional)
 - **enableDynamicDiscovery**: Enable experimental dynamic tool discovery (default: false)
+- **hackyDiscovery**: Enable minimal context mode with dynamic tool bridging (default: false)
 
 ### Filtering Patterns
 
@@ -151,7 +152,7 @@ Patterns match against the prefixed tool names (`serverName__toolName`) and supp
 
 ## 🚀 Usage
 
-### With Claude Code CLI 
+### With Claude Code CLI
 
 Add to your configuration (e.g. `path/to/your/project/.mcp.json`):
 
@@ -160,9 +161,7 @@ Add to your configuration (e.g. `path/to/your/project/.mcp.json`):
   "mcpServers": {
     "mcp-funnel": {
       "command": "npx",
-      "args": [
-        "mcp-funnel"
-      ]
+      "args": ["mcp-funnel"]
     }
   }
 }
@@ -175,10 +174,7 @@ This will use `.mcp-funnel.json` from your current working directory. To use a c
   "mcpServers": {
     "mcp-funnel": {
       "command": "npx",
-      "args": [
-        "mcp-funnel",
-        "/path/to/your/.mcp-funnel.json"
-      ]
+      "args": ["mcp-funnel", "/path/to/your/.mcp-funnel.json"]
     }
   }
 }
@@ -193,9 +189,7 @@ Add to your configuration (e.g. `path/to/your/project/.gemini/settings.json`):
   "mcpServers": {
     "mcp-funnel": {
       "command": "npx",
-      "args": [
-        "mcp-funnel"
-      ]
+      "args": ["mcp-funnel"]
     }
   }
 }
@@ -232,6 +226,67 @@ yarn build
 node dist/cli.js  # Uses .mcp-funnel.json from current directory
 node dist/cli.js /path/to/custom-config.json  # Explicit config
 ```
+
+## 🚀 Hacky Discovery Mode (Ultra-Low Context)
+
+Hacky Discovery is a workaround for Claude Code's lack of dynamic tool updates. When enabled (`hackyDiscovery: true`), MCP Funnel exposes only **3 tools** instead of 100+:
+
+1. **discover_tools_by_words**: Search for tools by keywords
+2. **get_tool_schema**: Get input schema for any tool
+3. **bridge_tool_request**: Execute any tool dynamically
+
+### How It Works
+
+```json
+{
+  "servers": [
+    {
+      "name": "github",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "your-token" }
+    }
+  ],
+  "hackyDiscovery": true
+}
+```
+
+### Usage Examples
+
+**Simple workflow:**
+
+```
+User: "Load PRs for https://github.com/chris-schra/mcp-funnel"
+Claude: *Automatically discovers GitHub tools, gets schema, and executes via bridge*
+```
+
+**Step-by-step workflow:**
+
+```
+1. "Find tools for working with files"
+   → Claude uses discover_tools_by_words
+   → Returns: filesystem__read_file, filesystem__write_file, etc.
+
+2. "Get the schema for filesystem__read_file"
+   → Claude uses get_tool_schema
+   → Returns: Input parameters and types
+
+3. "Read the README.md file"
+   → Claude uses bridge_tool_request
+   → Executes: {"tool": "filesystem__read_file", "arguments": {"path": "README.md"}}
+```
+
+### Benefits
+
+- **Full functionality**: All tools remain accessible
+- **Smart discovery**: Claude can find and use tools naturally
+- **Works today**: No waiting for Claude Code updates
+
+### Trade-offs
+
+- Less discoverable (tools aren't visible upfront)
+- Slight overhead for discovery/schema steps
+- Best for scenarios where you use <10% of available tools
 
 ## 🔍 Dynamic Tool Discovery (Experimental)
 

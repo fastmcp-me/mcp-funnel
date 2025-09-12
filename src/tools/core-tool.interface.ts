@@ -13,10 +13,7 @@ export interface CoreToolContext {
   >;
 
   /** Cache of full tool definitions from connected MCP servers */
-  toolDefinitionCache?: Map<
-    string,
-    { serverName: string; tool: Tool }
-  >;
+  toolDefinitionCache?: Map<string, { serverName: string; tool: Tool }>;
 
   /** Mapping of tool names to their client and original names */
   toolMapping?: Map<string, { client: Client; originalName: string }>;

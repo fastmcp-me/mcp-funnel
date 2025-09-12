@@ -19,8 +19,12 @@ async function main() {
   } catch (error) {
     console.error('Failed to load configuration:', error);
     console.error('\nUsage:');
-    console.error('  npx mcp-funnel                    # Uses .mcp-funnel.json from current directory');
-    console.error('  npx mcp-funnel path/to/config.json # Uses specified config file');
+    console.error(
+      '  npx mcp-funnel                    # Uses .mcp-funnel.json from current directory',
+    );
+    console.error(
+      '  npx mcp-funnel path/to/config.json # Uses specified config file',
+    );
     console.error('\nExample config (.mcp-funnel.json):');
     console.error(
       JSON.stringify(

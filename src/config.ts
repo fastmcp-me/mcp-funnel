@@ -11,8 +11,8 @@ export const ProxyConfigSchema = z.object({
   servers: z.array(TargetServerSchema),
   exposeTools: z.array(z.string()).optional(),
   hideTools: z.array(z.string()).optional(),
-  enableDynamicDiscovery: z.boolean().optional().default(false),
-  hackyDiscovery: z.boolean().optional().default(false),
+  enableDynamicDiscovery: z.boolean().optional(),
+  hackyDiscovery: z.boolean().optional(),
 });
 
 export type TargetServer = z.infer<typeof TargetServerSchema>;

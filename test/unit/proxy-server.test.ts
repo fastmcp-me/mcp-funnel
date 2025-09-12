@@ -92,7 +92,7 @@ describe('MCPProxy', () => {
       expect(parsed.servers[0].env).toBeUndefined();
       expect(parsed.hideTools).toBeUndefined();
       expect(parsed.exposeTools).toBeUndefined();
-      expect(parsed.enableDynamicDiscovery).toBe(false);
+      expect(parsed.enableDynamicDiscovery).toBeUndefined();
     });
   });
 

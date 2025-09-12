@@ -13,9 +13,9 @@ import * as readline from 'readline';
 import { spawn, ChildProcess } from 'child_process';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { ICoreTool, CoreToolContext } from './tools/core-tool.interface.js';
-import { DiscoverToolsByWords } from './tools/discover-tools-by-words';
-import { GetToolSchema } from './tools/get-tool-schema';
-import { BridgeToolRequest } from './tools/bridge-tool-request';
+import { DiscoverToolsByWords } from './tools/discover-tools-by-words/index.js';
+import { GetToolSchema } from './tools/get-tool-schema/index.js';
+import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
 
 import Package from '../package.json';
 
@@ -129,10 +129,8 @@ export class MCPProxy {
     string,
     { serverName: string; description: string }
   > = new Map();
-  private toolDefinitionCache: Map<
-    string,
-    { serverName: string; tool: Tool }
-  > = new Map();
+  private toolDefinitionCache: Map<string, { serverName: string; tool: Tool }> =
+    new Map();
   private coreTools: Map<string, ICoreTool> = new Map();
 
   constructor(config: ProxyConfig) {
@@ -375,7 +373,7 @@ export class MCPProxy {
         const response = await client.listTools();
         for (const tool of response.tools) {
           const fullToolName = `${serverName}__${tool.name}`;
-          
+
           // Cache tool descriptions and definitions
           this.toolDescriptionCache.set(fullToolName, {
             serverName,
@@ -385,7 +383,7 @@ export class MCPProxy {
             serverName,
             tool,
           });
-          
+
           // Always register in toolMapping for call handling
           this.toolMapping.set(fullToolName, {
             client,

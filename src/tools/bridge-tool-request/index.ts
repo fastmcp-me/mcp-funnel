@@ -26,7 +26,7 @@ export class BridgeToolRequest implements ICoreTool {
           arguments: {
             type: 'object',
             description:
-              'Arguments matching the tool\'s inputSchema (obtained from get_tool_schema)',
+              "Arguments matching the tool's inputSchema (obtained from get_tool_schema)",
             additionalProperties: true,
           },
         },
@@ -75,7 +75,8 @@ export class BridgeToolRequest implements ICoreTool {
 
       return result as CallToolResult;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       return {
         content: [
           {
