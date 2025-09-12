@@ -13,6 +13,7 @@ export const ProxyConfigSchema = z.object({
   hideTools: z.array(z.string()).optional(),
   enableDynamicDiscovery: z.boolean().optional(),
   hackyDiscovery: z.boolean().optional(),
+  toolsets: z.record(z.string(), z.array(z.string())).optional(),
 });
 
 export type TargetServer = z.infer<typeof TargetServerSchema>;
