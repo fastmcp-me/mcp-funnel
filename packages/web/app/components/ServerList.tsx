@@ -51,7 +51,7 @@ export function ServerList() {
     <div className="rounded-lg border bg-card p-6">
       <h2 className="text-lg font-semibold mb-4">Servers</h2>
       <div className="space-y-2">
-        {data?.servers?.map((server: any) => (
+        {(data as any)?.servers?.map((server: any) => (
           <div
             key={server.name}
             className="flex items-center justify-between p-3 rounded-lg bg-secondary"
@@ -60,8 +60,11 @@ export function ServerList() {
               <div
                 className={cn(
                   'h-2 w-2 rounded-full',
-                  server.status === 'connected' ? 'bg-green-500' : 
-                  server.status === 'error' ? 'bg-red-500' : 'bg-yellow-500'
+                  server.status === 'connected'
+                    ? 'bg-green-500'
+                    : server.status === 'error'
+                      ? 'bg-red-500'
+                      : 'bg-yellow-500',
                 )}
               />
               <div>

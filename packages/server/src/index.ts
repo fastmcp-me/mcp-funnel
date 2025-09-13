@@ -8,7 +8,7 @@ import { serversRoute } from './api/servers.js';
 import { toolsRoute } from './api/tools.js';
 import { configRoute } from './api/config.js';
 import { WebSocketManager } from './ws/manager.js';
-import type { MCPProxy } from '@mcp-funnel/core';
+import type { MCPProxy } from 'mcp-funnel';
 
 export interface ServerOptions {
   port?: number;
@@ -16,17 +16,17 @@ export interface ServerOptions {
   staticPath?: string;
 }
 
+type Variables = {
+  mcpProxy: MCPProxy;
+};
+
 export async function startWebServer(
   mcpProxy: MCPProxy,
-  options: ServerOptions = {}
+  options: ServerOptions = {},
 ) {
-  const {
-    port = 3456,
-    host = 'localhost',
-    staticPath
-  } = options;
+  const { port = 3456, host = '0.0.0.0', staticPath } = options;
 
-  const app = new Hono();
+  const app = new Hono<{ Variables: Variables }>();
 
   // Middleware
   app.use('*', cors());
@@ -45,10 +45,10 @@ export async function startWebServer(
 
   // Health check
   app.get('/api/health', (c) => {
-    return c.json({ 
-      status: 'ok', 
+    return c.json({
+      status: 'ok',
       timestamp: new Date().toISOString(),
-      version: '0.0.1'
+      version: '0.0.1',
     });
   });
 
@@ -58,13 +58,18 @@ export async function startWebServer(
     app.use('/*', serveStatic({ root: staticPath }));
   }
 
-  // Create HTTP server
-  const server = createServer((req, res) => {
-    serve({
+  // Create HTTP server with Hono
+  const server = serve(
+    {
       fetch: app.fetch,
       port,
-    })(req, res);
-  });
+      hostname: host,
+      createServer,
+    },
+    () => {
+      console.info(`🚀 Web UI server running at http://${host}:${port}`);
+    },
+  );
 
   // Setup WebSocket server
   const wss = new WebSocketServer({ noServer: true });
@@ -84,13 +89,8 @@ export async function startWebServer(
     wsManager.handleConnection(ws);
   });
 
-  // Start server
-  return new Promise<void>((resolve) => {
-    server.listen(port, host, () => {
-      console.log(`🚀 Web UI server running at http://${host}:${port}`);
-      resolve();
-    });
-  });
+  // Server already listening via hono's serve(). Resolve immediately.
+  return Promise.resolve();
 }
 
 // Type augmentation for Hono context

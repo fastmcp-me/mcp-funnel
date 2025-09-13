@@ -906,18 +906,19 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@mcp-funnel/web@workspace:packages/web"
   dependencies:
-    "@react-router/dev": "npm:^7.0.2"
-    "@react-router/node": "npm:^7.0.2"
-    "@react-router/serve": "npm:^7.0.2"
+    "@react-router/dev": "npm:^7.9.1"
+    "@react-router/node": "npm:^7.9.1"
+    "@react-router/serve": "npm:^7.9.1"
     "@tanstack/react-query": "npm:^5.63.0"
     "@types/react": "npm:^18.3.17"
     "@types/react-dom": "npm:^18.3.5"
     autoprefixer: "npm:^10.4.20"
     clsx: "npm:^2.1.1"
+    isbot: "npm:^5.0.0"
     postcss: "npm:^8.4.49"
     react: "npm:^18.3.1"
     react-dom: "npm:^18.3.1"
-    react-router: "npm:^7.0.2"
+    react-router: "npm:^7.9.1"
     tailwind-merge: "npm:^2.6.0"
     tailwindcss: "npm:^3.4.17"
     typescript: "npm:^5.9.2"
@@ -1057,7 +1058,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-router/dev@npm:^7.0.2":
+"@react-router/dev@npm:^7.9.1":
   version: 7.9.1
   resolution: "@react-router/dev@npm:7.9.1"
   dependencies:
@@ -1126,7 +1127,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-router/node@npm:7.9.1, @react-router/node@npm:^7.0.2":
+"@react-router/node@npm:7.9.1, @react-router/node@npm:^7.9.1":
   version: 7.9.1
   resolution: "@react-router/node@npm:7.9.1"
   dependencies:
@@ -1141,7 +1142,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-router/serve@npm:^7.0.2":
+"@react-router/serve@npm:^7.9.1":
   version: 7.9.1
   resolution: "@react-router/serve@npm:7.9.1"
   dependencies:
@@ -3397,7 +3398,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"isbot@npm:^5.1.11":
+"isbot@npm:^5.0.0, isbot@npm:^5.1.11":
   version: 5.1.30
   resolution: "isbot@npm:5.1.30"
   checksum: 10c0/00a34842c0573669830ef17fc8b0ce8e3a947835179c13e10da737899310b33d1644fbab8042a8963d581010cce6ae46cd6ee947bd5e79465e29b9cbead44113
@@ -4571,7 +4572,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-router@npm:^7.0.2":
+"react-router@npm:^7.9.1":
   version: 7.9.1
   resolution: "react-router@npm:7.9.1"
   dependencies:
