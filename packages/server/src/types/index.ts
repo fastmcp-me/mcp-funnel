@@ -10,14 +10,20 @@ export const ServerStatusSchema = z.object({
 export const ToolSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
-  inputSchema: z.any().optional(),
+  inputSchema: z.unknown().optional(),
   serverName: z.string(),
   enabled: z.boolean(),
 });
 
+// HTTP body for execute via REST
+export const ExecuteToolBodySchema = z.object({
+  arguments: z.record(z.string(), z.unknown()).optional(),
+});
+
+// WS payload for execute messages
 export const ExecuteToolSchema = z.object({
   toolName: z.string(),
-  arguments: z.record(z.string(), z.any()).optional(),
+  arguments: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const ConfigUpdateSchema = z.object({
@@ -60,19 +66,19 @@ export const WSEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('tool.executing'),
-    payload: z.object({
-      toolName: z.string(),
-      arguments: z.any(),
-      requestId: z.string(),
-      timestamp: z.string(),
+      payload: z.object({
+        toolName: z.string(),
+      arguments: z.unknown(),
+        requestId: z.string(),
+        timestamp: z.string(),
+      }),
     }),
-  }),
   z.object({
     type: z.literal('tool.result'),
     payload: z.object({
       toolName: z.string(),
       requestId: z.string(),
-      result: z.any(),
+      result: z.unknown(),
       error: z.string().optional(),
       duration: z.number(),
       timestamp: z.string(),
@@ -99,6 +105,7 @@ export const WSEventSchema = z.discriminatedUnion('type', [
 export type ServerStatus = z.infer<typeof ServerStatusSchema>;
 export type Tool = z.infer<typeof ToolSchema>;
 export type ExecuteTool = z.infer<typeof ExecuteToolSchema>;
+export type ExecuteToolBody = z.infer<typeof ExecuteToolBodySchema>;
 export type ConfigUpdate = z.infer<typeof ConfigUpdateSchema>;
 export type WSMessage = z.infer<typeof WSMessageSchema>;
 export type WSEvent = z.infer<typeof WSEventSchema>;

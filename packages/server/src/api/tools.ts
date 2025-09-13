@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { ExecuteToolSchema } from '../types/index.js';
-import { randomUUID } from 'crypto';
+import { ExecuteToolBodySchema } from '../types/index.js';
 import type { MCPProxy } from 'mcp-funnel';
 
 type Variables = {
@@ -57,7 +56,9 @@ toolsRoute.get('/search', async (c) => {
           description: toolDef.tool.description,
           inputSchema: toolDef.tool.inputSchema,
           serverName,
-          enabled: mcpProxy.dynamicallyEnabledTools.has(fullName),
+          enabled:
+            mcpProxy.dynamicallyEnabledTools.has(fullName) ||
+            !mcpProxy.config.enableDynamicDiscovery,
         });
       }
     }
@@ -68,12 +69,14 @@ toolsRoute.get('/search', async (c) => {
 
 toolsRoute.post(
   '/:name/execute',
-  zValidator('json', ExecuteToolSchema),
+  zValidator('json', ExecuteToolBodySchema),
   async (c) => {
     const { name } = c.req.param();
     const body = c.req.valid('json');
     const mcpProxy = c.get('mcpProxy');
-    const requestId = randomUUID();
+    const requestId = globalThis.crypto?.randomUUID()
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
     try {
       // Emit executing event via WebSocket

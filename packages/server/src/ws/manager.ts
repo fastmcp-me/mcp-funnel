@@ -1,5 +1,10 @@
 import { WebSocket } from 'ws';
-import { WSMessageSchema, type WSEvent } from '../types/index.js';
+import {
+  WSMessageSchema,
+  type WSEvent,
+  type WSMessage,
+  type ExecuteTool,
+} from '../types/index.js';
 import type { MCPProxy } from 'mcp-funnel';
 
 interface Client {
@@ -63,7 +68,7 @@ export class WebSocketManager {
     });
   }
 
-  private handleMessage(client: Client, message: any) {
+  private handleMessage(client: Client, message: WSMessage) {
     switch (message.type) {
       case 'subscribe':
         message.events.forEach((event: string) => {
@@ -84,7 +89,7 @@ export class WebSocketManager {
     }
   }
 
-  private async executeToolAsync(client: Client, payload: any) {
+  private async executeToolAsync(client: Client, payload: ExecuteTool) {
     const requestId = crypto.randomUUID();
     const startTime = Date.now();
 

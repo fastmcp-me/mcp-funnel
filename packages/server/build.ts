@@ -9,13 +9,13 @@ async function build() {
   const isWatch = process.argv.includes('--watch');
 
   const buildOptions: esbuild.BuildOptions = {
-    entryPoints: [join(__dirname, 'server/src/index.ts')],
+    entryPoints: [join(__dirname, 'src/index.ts')],
     bundle: true,
     platform: 'node',
     target: 'node18',
     format: 'esm',
-    outfile: join(__dirname, 'server/dist/index.js'),
-    external: ['@mcp-funnel/core', 'ws'],
+    outfile: join(__dirname, 'dist/index.js'),
+    external: ['mcp-funnel', 'ws'],
     sourcemap: true,
     minify: !isWatch,
     logLevel: 'info',

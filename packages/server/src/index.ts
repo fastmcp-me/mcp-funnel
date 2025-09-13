@@ -24,7 +24,7 @@ export async function startWebServer(
   mcpProxy: MCPProxy,
   options: ServerOptions = {},
 ) {
-  const { port = 3456, host = 'localhost', staticPath } = options;
+  const { port = 3456, host = '0.0.0.0', staticPath } = options;
 
   const app = new Hono<{ Variables: Variables }>();
 
@@ -59,12 +59,17 @@ export async function startWebServer(
   }
 
   // Create HTTP server with Hono
-  const server = serve({
-    fetch: app.fetch,
-    port,
-    hostname: host,
-    createServer,
-  });
+  const server = serve(
+    {
+      fetch: app.fetch,
+      port,
+      hostname: host,
+      createServer,
+    },
+    () => {
+      console.info(`🚀 Web UI server running at http://${host}:${port}`);
+    },
+  );
 
   // Setup WebSocket server
   const wss = new WebSocketServer({ noServer: true });
@@ -84,13 +89,8 @@ export async function startWebServer(
     wsManager.handleConnection(ws);
   });
 
-  // Start server
-  return new Promise<void>((resolve) => {
-    server.listen(port, host, () => {
-      console.info(`🚀 Web UI server running at http://${host}:${port}`);
-      resolve();
-    });
-  });
+  // Server already listening via hono's serve(). Resolve immediately.
+  return Promise.resolve();
 }
 
 // Type augmentation for Hono context
