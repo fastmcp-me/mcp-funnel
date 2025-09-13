@@ -18,21 +18,41 @@ function searchToolDescriptions(
   words: string,
   toolDescriptions: Map<string, { serverName: string; description: string }>,
 ): ToolMatch[] {
-  const keywords = words.toLowerCase().split(/\s+/).filter(Boolean);
+  // Split on whitespace and hyphens to capture queries like "code-reasoning"
+  const keywords = words.toLowerCase().split(/[\s-]+/).filter(Boolean);
   const matches: ToolMatch[] = [];
 
   for (const [toolName, { serverName, description }] of toolDescriptions) {
     const lowerDesc = description.toLowerCase();
+    const lowerName = toolName.toLowerCase();
+    const lowerServer = serverName.toLowerCase();
+    const nameTokens = lowerName.split(/[^a-z0-9]+/).filter(Boolean);
+    const serverTokens = lowerServer.split(/[^a-z0-9]+/).filter(Boolean);
+
     let score = 0;
 
-    // Calculate match score based on keyword presence
+    // Calculate match score across description, tool name, and server name
     for (const keyword of keywords) {
+      // Description scoring: prefer whole-word matches over substrings
       if (lowerDesc.includes(keyword)) {
-        // Higher score for exact word match vs substring match
         const wordBoundaryMatch = new RegExp(`\\b${keyword}\\b`, 'i').test(
           description,
         );
         score += wordBoundaryMatch ? 2 : 1;
+      }
+
+      // Tool name scoring: token match preferred, then substring
+      if (nameTokens.includes(keyword)) {
+        score += 2;
+      } else if (lowerName.includes(keyword)) {
+        score += 1;
+      }
+
+      // Server name scoring: token match preferred, then substring
+      if (serverTokens.includes(keyword)) {
+        score += 2;
+      } else if (lowerServer.includes(keyword)) {
+        score += 1;
       }
     }
 
@@ -46,7 +66,7 @@ function searchToolDescriptions(
     }
   }
 
-  // Sort by score (highest first), then alphabetically
+  // Sort by score (highest first), then alphabetically for stable output
   return matches.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     return a.name.localeCompare(b.name);

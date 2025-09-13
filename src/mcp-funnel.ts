@@ -227,6 +227,13 @@ export class MCPProxy {
   async initialize() {
     this.registerCoreTools();
     await this.connectToTargetServers();
+    // Pre-populate caches so discovery/load operations work before first tools/list
+    try {
+      await this.populateToolCaches();
+    } catch (error) {
+      console.error('[proxy] Initial cache population failed:', error);
+      logError('initial-cache-populate', error);
+    }
     this.setupRequestHandlers();
   }
 
