@@ -41,3 +41,11 @@ temp/
 .pnp.*
 haino.config.json
 .eslintcache
+
+.claude
+.gemini
+
+.mcp.json
+.mcp-funnel.json
+
+.logs

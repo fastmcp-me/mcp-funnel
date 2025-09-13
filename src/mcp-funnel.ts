@@ -13,9 +13,59 @@ import * as readline from 'readline';
 import { spawn, ChildProcess } from 'child_process';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { ICoreTool, CoreToolContext } from './tools/core-tool.interface.js';
-import { DiscoverToolsByWords } from './tools/discover-tools-by-words';
+import { DiscoverToolsByWords } from './tools/discover-tools-by-words/index.js';
+import { GetToolSchema } from './tools/get-tool-schema/index.js';
+import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
+import { LoadToolset } from './tools/load-toolset/index.js';
+import { writeFileSync, mkdirSync, appendFileSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { logEvent, logError, getServerStreamLogPath } from './logger.js';
 
 import Package from '../package.json';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const LOG_DIR = resolve(__dirname, '../.logs');
+
+// Ensure log directory exists
+try {
+  mkdirSync(LOG_DIR, { recursive: true });
+} catch (error) {
+  // Log dir might already exist
+}
+
+function legacyErrorLog(error: any, context: string = 'general', serverName?: string) {
+  const timestamp = new Date().toISOString();
+  const prefix = serverName ? `${serverName}-` : '';
+  const logFile = resolve(LOG_DIR, `error-${timestamp.replace(/:/g, '-')}-${prefix}${context}.log`);
+  
+  const errorDetails = {
+    timestamp,
+    context,
+    serverName,
+    message: error?.message || String(error),
+    stack: error?.stack,
+    code: error?.code,
+    syscall: error?.syscall,
+    path: error?.path,
+    processInfo: {
+      pid: process.pid,
+      argv: process.argv,
+      cwd: process.cwd(),
+      env: {
+        NODE_ENV: process.env.NODE_ENV,
+        PATH: process.env.PATH,
+      },
+    },
+  };
+  
+  try {
+    writeFileSync(logFile, JSON.stringify(errorDetails, null, 2));
+    console.error(`[proxy] Error logged to: ${logFile}`);
+  } catch (writeError) {
+    console.error('[proxy] Failed to write error log:', writeError);
+  }
+}
 
 interface TransportOptions {
   command: string;
@@ -35,15 +85,25 @@ export class PrefixedStdioClientTransport {
     serverName: string,
     private options: TransportOptions,
   ) {
-    this.serverName = serverName;
+    this._serverName = serverName;
   }
 
   async start(): Promise<void> {
-    // Spawn the process with full control over stdio
-    this.process = spawn(this.options.command, this.options.args || [], {
-      env: this.options.env,
-      stdio: ['pipe', 'pipe', 'pipe'], // Full control over all streams
-    });
+    try {
+      // Spawn the process with full control over stdio
+      this.process = spawn(this.options.command, this.options.args || [], {
+        env: this.options.env,
+        stdio: ['pipe', 'pipe', 'pipe'], // Full control over all streams
+        cwd: process.cwd(), // Explicitly set cwd
+      });
+      logEvent('debug', 'transport:start', { server: this._serverName, command: this.options.command, args: this.options.args });
+    } catch (error) {
+      console.error(`[${this._serverName}] Failed to spawn process:`, error);
+      // Keep legacy error file + structured log
+      legacyErrorLog(error, 'spawn-failed', this._serverName);
+      logError('spawn-failed', error, { server: this._serverName, command: this.options.command, args: this.options.args });
+      throw error;
+    }
 
     // Handle stderr with prefixing
     if (this.process.stderr) {
@@ -54,7 +114,10 @@ export class PrefixedStdioClientTransport {
 
       rl.on('line', (line: string) => {
         if (line.trim()) {
-          console.error(`[${this.serverName}] ${line}`);
+          console.error(`[${this._serverName}] ${line}`);
+          try {
+            appendFileSync(getServerStreamLogPath(this._serverName, 'stderr'), `[${new Date().toISOString()}] ${line}\n`);
+          } catch {}
         }
       });
     }
@@ -73,7 +136,11 @@ export class PrefixedStdioClientTransport {
             this.messageHandlers.forEach((handler) => handler(message));
           } catch {
             // Not a JSON message, might be a log line that went to stdout
-            console.error(`[${this.serverName}] ${line}`);
+            console.error(`[${this._serverName}] ${line}`);
+            try {
+              appendFileSync(getServerStreamLogPath(this._serverName, 'stdout'), `[${new Date().toISOString()}] ${line}\n`);
+            } catch {}
+            logEvent('debug', 'transport:nonjson_stdout', { server: this._serverName, line: line.slice(0, 200) });
           }
         }
       });
@@ -81,10 +148,19 @@ export class PrefixedStdioClientTransport {
 
     // Handle process errors and exit
     this.process.on('error', (error) => {
+      console.error(`[${this._serverName}] Process error:`, error);
+      legacyErrorLog(error, 'process-error', this._serverName);
+      logError('process-error', error, { server: this._serverName });
       this.errorHandlers.forEach((handler) => handler(error));
     });
 
-    this.process.on('close', () => {
+    this.process.on('close', (code, signal) => {
+      if (code !== 0) {
+        const errorMsg = `Process exited with code ${code}, signal ${signal}`;
+        console.error(`[${this._serverName}] ${errorMsg}`);
+        legacyErrorLog({ message: errorMsg, code, signal }, 'process-exit', this._serverName);
+        logError('process-exit', new Error(errorMsg), { server: this._serverName, code, signal });
+      }
       this.closeHandlers.forEach((handler) => handler());
     });
   }
@@ -117,21 +193,23 @@ export class PrefixedStdioClientTransport {
 }
 
 export class MCPProxy {
-  private server: Server;
-  private clients: Map<string, Client> = new Map();
-  private config: ProxyConfig;
-  private toolMapping: Map<string, { client: Client; originalName: string }> =
+  private _server: Server;
+  private _clients: Map<string, Client> = new Map();
+  private _config: ProxyConfig;
+  private _toolMapping: Map<string, { client: Client; originalName: string }> =
     new Map();
-  private dynamicallyEnabledTools: Set<string> = new Set();
-  private toolDescriptionCache: Map<
+  private _dynamicallyEnabledTools: Set<string> = new Set();
+  private _toolDescriptionCache: Map<
     string,
     { serverName: string; description: string }
   > = new Map();
+  private _toolDefinitionCache: Map<string, { serverName: string; tool: Tool }> =
+    new Map();
   private coreTools: Map<string, ICoreTool> = new Map();
 
   constructor(config: ProxyConfig) {
-    this.config = config;
-    this.server = new Server(
+    this._config = config;
+    this._server = new Server(
       {
         name: 'mcp-funnel',
         version: Package.version,
@@ -149,14 +227,26 @@ export class MCPProxy {
   async initialize() {
     this.registerCoreTools();
     await this.connectToTargetServers();
+    // Pre-populate caches so discovery/load operations work before first tools/list
+    try {
+      await this.populateToolCaches();
+    } catch (error) {
+      console.error('[proxy] Initial cache population failed:', error);
+      logError('initial-cache-populate', error);
+    }
     this.setupRequestHandlers();
   }
 
   private registerCoreTools() {
-    const tools: ICoreTool[] = [new DiscoverToolsByWords()];
+    const tools: ICoreTool[] = [
+      new DiscoverToolsByWords(),
+      new GetToolSchema(),
+      new BridgeToolRequest(),
+      new LoadToolset(),
+    ];
 
     for (const tool of tools) {
-      if (tool.isEnabled(this.config)) {
+      if (tool.isEnabled(this._config)) {
         this.coreTools.set(tool.name, tool);
         if (tool.onInit) {
           tool.onInit(this.createToolContext());
@@ -168,16 +258,18 @@ export class MCPProxy {
 
   private createToolContext(): CoreToolContext {
     return {
-      toolDescriptionCache: this.toolDescriptionCache,
-      dynamicallyEnabledTools: this.dynamicallyEnabledTools,
-      config: this.config,
+      toolDescriptionCache: this._toolDescriptionCache,
+      toolDefinitionCache: this._toolDefinitionCache,
+      toolMapping: this._toolMapping,
+      dynamicallyEnabledTools: this._dynamicallyEnabledTools,
+      config: this._config,
       enableTools: (toolNames: string[]) => {
         for (const toolName of toolNames) {
-          this.dynamicallyEnabledTools.add(toolName);
+          this._dynamicallyEnabledTools.add(toolName);
           console.error(`[proxy] Dynamically enabled tool: ${toolName}`);
         }
         // Send notification that the tool list has changed
-        this.server.sendToolListChanged();
+        this._server.sendToolListChanged();
         console.error(`[proxy] Sent tools/list_changed notification`);
       },
       sendNotification: async (
@@ -191,30 +283,43 @@ export class MCPProxy {
         };
         // Type assertion is required because the Server class restricts notifications to specific types,
         // but this function needs to support arbitrary custom notifications
-        this.server.notification(notification as Notification);
+        this._server.notification(notification as Notification);
       },
     };
   }
 
   private async connectToTargetServers() {
-    const connectionPromises = this.config.servers.map(async (targetServer) => {
-      const client = new Client({
-        name: `proxy-client-${targetServer.name}`,
-        version: '1.0.0',
-      });
+    const connectionPromises = this._config.servers.map(async (targetServer) => {
+      try {
+        logEvent('info', 'server:connect_start', { name: targetServer.name, command: targetServer.command, args: targetServer.args });
+        const client = new Client({
+          name: `proxy-client-${targetServer.name}`,
+          version: '1.0.0',
+        });
 
-      const transport = new PrefixedStdioClientTransport(targetServer.name, {
-        command: targetServer.command,
-        args: targetServer.args || [],
-        env: { ...process.env, ...targetServer.env } as Record<string, string>,
-      });
+        const transport = new PrefixedStdioClientTransport(targetServer.name, {
+          command: targetServer.command,
+          args: targetServer.args || [],
+          env: { ...process.env, ...targetServer.env } as Record<string, string>,
+        });
 
-      await client.connect(transport);
-      this.clients.set(targetServer.name, client);
-      console.error(`[proxy] Connected to: ${targetServer.name}`);
+        await client.connect(transport);
+        this._clients.set(targetServer.name, client);
+        console.error(`[proxy] Connected to: ${targetServer.name}`);
+        logEvent('info', 'server:connect_success', { name: targetServer.name });
+        return { name: targetServer.name, status: 'connected' as const };
+      } catch (error) {
+        console.error(`[proxy] Failed to connect to ${targetServer.name}:`, error);
+        legacyErrorLog(error, 'connection-failed', targetServer.name);
+        logError('connection-failed', error, { name: targetServer.name, command: targetServer.command, args: targetServer.args });
+        // Do not throw; continue starting proxy with remaining servers
+        return { name: targetServer.name, status: 'failed' as const, error };
+      }
     });
 
-    await Promise.all(connectionPromises);
+    const results = await Promise.allSettled(connectionPromises);
+    const summary = results.map((r) => (r.status === 'fulfilled' ? r.value : r.reason));
+    logEvent('info', 'server:connect_summary', { summary });
   }
 
   private matchesPattern(toolName: string, pattern: string): boolean {
@@ -234,19 +339,19 @@ export class MCPProxy {
     const fullToolName = `${serverName}__${toolName}`;
 
     // Check if dynamically enabled
-    if (this.dynamicallyEnabledTools.has(fullToolName)) {
+    if (this._dynamicallyEnabledTools.has(fullToolName)) {
       return true;
     }
 
-    if (this.config.exposeTools) {
+    if (this._config.exposeTools) {
       // Check if tool matches any expose pattern (only checking prefixed name)
-      return this.config.exposeTools.some((pattern) =>
+      return this._config.exposeTools.some((pattern) =>
         this.matchesPattern(fullToolName, pattern),
       );
     }
-    if (this.config.hideTools) {
+    if (this._config.hideTools) {
       // Check if tool matches any hide pattern (only checking prefixed name)
-      return !this.config.hideTools.some((pattern) =>
+      return !this._config.hideTools.some((pattern) =>
         this.matchesPattern(fullToolName, pattern),
       );
     }
@@ -254,36 +359,50 @@ export class MCPProxy {
   }
 
   private setupRequestHandlers() {
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+    this._server.setRequestHandler(ListToolsRequestSchema, async () => {
       const allTools: Tool[] = [];
+
+      // In hacky discovery mode, only expose core tools
+      if (this._config.hackyDiscovery) {
+        for (const coreTool of this.coreTools.values()) {
+          allTools.push(coreTool.tool);
+        }
+        // Still populate the tool caches for bridge/schema tools
+        await this.populateToolCaches();
+        return { tools: allTools };
+      }
 
       // Add core tools
       for (const coreTool of this.coreTools.values()) {
         allTools.push(coreTool.tool);
       }
 
-      for (const [serverName, client] of this.clients) {
+      for (const [serverName, client] of this._clients) {
         try {
           const response = await client.listTools();
 
           for (const tool of response.tools) {
             const fullToolName = `${serverName}__${tool.name}`;
 
-            // Cache tool descriptions for discovery
-            this.toolDescriptionCache.set(fullToolName, {
+            // Cache tool descriptions and definitions for discovery
+            this._toolDescriptionCache.set(fullToolName, {
               serverName,
               description: tool.description || '',
             });
+            this._toolDefinitionCache.set(fullToolName, {
+              serverName,
+              tool,
+            });
 
             // Always register in toolMapping for call handling
-            this.toolMapping.set(fullToolName, {
+            this._toolMapping.set(fullToolName, {
               client,
               originalName: tool.name,
             });
 
             // If dynamic discovery is enabled, check if tool was dynamically enabled
-            if (this.config.enableDynamicDiscovery) {
-              if (!this.dynamicallyEnabledTools.has(fullToolName)) {
+            if (this._config.enableDynamicDiscovery) {
+              if (!this._dynamicallyEnabledTools.has(fullToolName)) {
                 continue; // Skip tools not yet enabled
               }
               // Tool was dynamically enabled, add it to the list
@@ -309,45 +428,112 @@ export class MCPProxy {
             `[proxy] Failed to list tools from ${serverName}:`,
             error,
           );
+          logError('tools:list_failed', error, { server: serverName });
         }
       }
 
+      logEvent('debug', 'tools:list_complete', { total: allTools.length });
       return { tools: allTools };
     });
 
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    this._server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name: toolName, arguments: toolArgs } = request.params;
 
       // Handle core tools
       const coreTool = this.coreTools.get(toolName);
       if (coreTool) {
+        logEvent('info', 'tool:call_core', { name: toolName });
         return coreTool.handle(toolArgs ?? {}, this.createToolContext());
       }
 
-      const mapping = this.toolMapping.get(toolName);
+      const mapping = this._toolMapping.get(toolName);
       if (!mapping) {
         throw new Error(`Tool not found: ${toolName}`);
       }
 
       try {
+        logEvent('info', 'tool:call_bridge', { name: toolName });
         const result = await mapping.client.callTool({
           name: mapping.originalName,
           arguments: toolArgs,
         });
-
+        logEvent('debug', 'tool:result', { name: toolName });
         return result as CallToolResult;
       } catch (error) {
         console.error(`[proxy] Failed to call tool ${toolName}:`, error);
+        logError('tool:call_failed', error, { name: toolName });
         throw error;
       }
     });
   }
 
+  private async populateToolCaches() {
+    for (const [serverName, client] of this._clients) {
+      try {
+        const response = await client.listTools();
+        for (const tool of response.tools) {
+          const fullToolName = `${serverName}__${tool.name}`;
+
+          // Cache tool descriptions and definitions
+          this._toolDescriptionCache.set(fullToolName, {
+            serverName,
+            description: tool.description || '',
+          });
+          this._toolDefinitionCache.set(fullToolName, {
+            serverName,
+            tool,
+          });
+
+          // Always register in toolMapping for call handling
+          this._toolMapping.set(fullToolName, {
+            client,
+            originalName: tool.name,
+          });
+        }
+      } catch (error) {
+        console.error(
+          `[proxy] Failed to cache tools from ${serverName}:`,
+          error,
+        );
+      }
+    }
+  }
+
   async start() {
     await this.initialize();
     const transport = new StdioServerTransport();
-    await this.server.connect(transport);
+    await this._server.connect(transport);
     console.error('[proxy] Server started successfully');
+    logEvent('info', 'proxy:started');
+  }
+
+  // Public getters for web UI and other integrations
+  get config() {
+    return this._config;
+  }
+
+  get clients() {
+    return this._clients;
+  }
+
+  get toolMapping() {
+    return this._toolMapping;
+  }
+
+  get dynamicallyEnabledTools() {
+    return this._dynamicallyEnabledTools;
+  }
+
+  get toolDescriptionCache() {
+    return this._toolDescriptionCache;
+  }
+
+  get toolDefinitionCache() {
+    return this._toolDefinitionCache;
+  }
+
+  get server() {
+    return this._server;
   }
 }
 
