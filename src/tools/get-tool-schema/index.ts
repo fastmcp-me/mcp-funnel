@@ -1,12 +1,13 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { ICoreTool, CoreToolContext } from '../core-tool.interface.js';
-import { ProxyConfig } from '../../config.js';
+import { CoreToolContext } from '../core-tool.interface.js';
+import { BaseCoreTool } from '../base-core-tool.js';
+import { resolveToolName } from '../../utils/tool-resolver.js';
 
 export interface GetToolSchemaParams {
   tool: string;
 }
 
-export class GetToolSchema implements ICoreTool {
+export class GetToolSchema extends BaseCoreTool {
   readonly name = 'get_tool_schema';
 
   get tool(): Tool {
@@ -28,10 +29,6 @@ export class GetToolSchema implements ICoreTool {
     };
   }
 
-  isEnabled(config: ProxyConfig): boolean {
-    return config.hackyDiscovery === true;
-  }
-
   async handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
@@ -40,7 +37,33 @@ export class GetToolSchema implements ICoreTool {
       throw new Error('Missing or invalid "tool" parameter');
     }
 
-    const toolName = args.tool;
+    // First check if we have tool mapping for short name resolution
+    let toolName = args.tool;
+
+    if (context.toolMapping) {
+      // Use the shared resolver for consistent short name support
+      const resolution = resolveToolName(
+        args.tool,
+        context.toolMapping,
+        context.config,
+      );
+
+      if (!resolution.resolved) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text:
+                resolution.error?.message ||
+                `Tool not found: ${args.tool}. Use discover_tools_by_words to find available tools.`,
+            },
+          ],
+        };
+      }
+
+      toolName = resolution.toolName!;
+    }
+
     const toolDefinition = context.toolDefinitionCache?.get(toolName);
 
     if (!toolDefinition) {

@@ -93,25 +93,49 @@ describe('LoadToolset', () => {
   });
 
   describe('isEnabled', () => {
-    it('should be enabled when hackyDiscovery is true', () => {
+    it('should be enabled when exposeCoreTools is not specified', () => {
       const config: ProxyConfig = {
         servers: [],
-        hackyDiscovery: true,
       };
       expect(loadToolset.isEnabled(config)).toBe(true);
     });
 
-    it('should be disabled when hackyDiscovery is false', () => {
+    it('should be disabled when exposeCoreTools is empty array', () => {
       const config: ProxyConfig = {
         servers: [],
-        hackyDiscovery: false,
+        exposeCoreTools: [],
       };
       expect(loadToolset.isEnabled(config)).toBe(false);
     });
 
-    it('should be disabled when hackyDiscovery is not set', () => {
+    it('should be enabled when exposeCoreTools includes tool name', () => {
       const config: ProxyConfig = {
         servers: [],
+        exposeCoreTools: ['load_toolset'],
+      };
+      expect(loadToolset.isEnabled(config)).toBe(true);
+    });
+
+    it('should be enabled when exposeCoreTools has matching pattern', () => {
+      const config: ProxyConfig = {
+        servers: [],
+        exposeCoreTools: ['load_*'],
+      };
+      expect(loadToolset.isEnabled(config)).toBe(true);
+    });
+
+    it('should be enabled when exposeCoreTools is ["*"]', () => {
+      const config: ProxyConfig = {
+        servers: [],
+        exposeCoreTools: ['*'],
+      };
+      expect(loadToolset.isEnabled(config)).toBe(true);
+    });
+
+    it('should be disabled when exposeCoreTools excludes the tool', () => {
+      const config: ProxyConfig = {
+        servers: [],
+        exposeCoreTools: ['other_tool'],
       };
       expect(loadToolset.isEnabled(config)).toBe(false);
     });

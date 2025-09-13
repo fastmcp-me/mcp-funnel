@@ -11,6 +11,7 @@ export const ProxyConfigSchema = z.object({
   servers: z.array(TargetServerSchema),
   exposeTools: z.array(z.string()).optional(),
   hideTools: z.array(z.string()).optional(),
+  exposeCoreTools: z.array(z.string()).optional(),
   enableDynamicDiscovery: z.boolean().optional(),
   hackyDiscovery: z.boolean().optional(),
   toolsets: z.record(z.string(), z.array(z.string())).optional(),

@@ -1,6 +1,6 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { ICoreTool, CoreToolContext } from '../core-tool.interface.js';
-import { ProxyConfig } from '../../config.js';
+import { CoreToolContext } from '../core-tool.interface.js';
+import { BaseCoreTool } from '../base-core-tool.js';
 
 export interface DiscoverToolsParams {
   words: string;
@@ -19,7 +19,10 @@ function searchToolDescriptions(
   toolDescriptions: Map<string, { serverName: string; description: string }>,
 ): ToolMatch[] {
   // Split on whitespace and hyphens to capture queries like "code-reasoning"
-  const keywords = words.toLowerCase().split(/[\s-]+/).filter(Boolean);
+  const keywords = words
+    .toLowerCase()
+    .split(/[\s-]+/)
+    .filter(Boolean);
   const matches: ToolMatch[] = [];
 
   for (const [toolName, { serverName, description }] of toolDescriptions) {
@@ -81,7 +84,7 @@ function searchToolDescriptions(
  * @internal
  * @see file://../core-tool.interface.ts#L33
  */
-export class DiscoverToolsByWords implements ICoreTool {
+export class DiscoverToolsByWords extends BaseCoreTool {
   readonly name = 'discover_tools_by_words';
 
   get tool(): Tool {
@@ -106,10 +109,6 @@ export class DiscoverToolsByWords implements ICoreTool {
         required: ['words'],
       },
     };
-  }
-
-  isEnabled(config: ProxyConfig): boolean {
-    return config.enableDynamicDiscovery === true;
   }
 
   async handle(

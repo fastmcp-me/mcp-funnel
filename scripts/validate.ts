@@ -190,10 +190,13 @@ class MonorepoValidator {
       }
 
       for (const message of result.messages) {
-        const ruleId = message.ruleId as '@typescript-eslint/no-unused-vars';
+        const ruleId = message.ruleId as string;
         if (ruleId === '@typescript-eslint/no-unused-vars') {
           message.message +=
             ' Analyze if the variable will be used in future iterations of the current task - if so, add a TODO comment and use _ prefix. If not, remove the variable.';
+        } else if (ruleId === '@typescript-eslint/no-explicit-any') {
+          message.message +=
+            ' Do not use: any, double casts like `as unknown as OtherType`. Make sure to lookup the correct type. If necessary, you can usually use Partial<>.';
         }
 
         const validationResult: ValidationResult = {

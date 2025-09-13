@@ -59,5 +59,6 @@
     "memory__dashboard_*"
   ],
   "exposeTools": null,
+  "exposeCoreTools": ["discover_*", "load_toolset"],
   "enableDynamicDiscovery": false
 }

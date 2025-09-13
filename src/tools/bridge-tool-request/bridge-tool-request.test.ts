@@ -68,18 +68,39 @@ describe('BridgeToolRequest', () => {
   });
 
   describe('isEnabled', () => {
-    it('should be enabled when hackyDiscovery is true', () => {
-      expect(tool.isEnabled({ servers: [], hackyDiscovery: true })).toBe(true);
+    it('should be enabled when exposeCoreTools is not specified', () => {
+      expect(tool.isEnabled({ servers: [] })).toBe(true);
     });
 
-    it('should be disabled when hackyDiscovery is false', () => {
-      expect(tool.isEnabled({ servers: [], hackyDiscovery: false })).toBe(
-        false,
+    it('should be disabled when exposeCoreTools is empty array', () => {
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: [] })).toBe(false);
+    });
+
+    it('should be enabled when exposeCoreTools includes tool name', () => {
+      expect(
+        tool.isEnabled({
+          servers: [],
+          exposeCoreTools: ['bridge_tool_request'],
+        }),
+      ).toBe(true);
+    });
+
+    it('should be enabled when exposeCoreTools has matching pattern', () => {
+      expect(
+        tool.isEnabled({ servers: [], exposeCoreTools: ['bridge_*'] }),
+      ).toBe(true);
+    });
+
+    it('should be enabled when exposeCoreTools is ["*"]', () => {
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(
+        true,
       );
     });
 
-    it('should be disabled when hackyDiscovery is undefined', () => {
-      expect(tool.isEnabled({ servers: [] })).toBe(false);
+    it('should be disabled when exposeCoreTools excludes the tool', () => {
+      expect(
+        tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] }),
+      ).toBe(false);
     });
   });
 

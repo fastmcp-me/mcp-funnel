@@ -1,6 +1,7 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { ICoreTool, CoreToolContext } from '../core-tool.interface.js';
-import { ProxyConfig } from '../../config.js';
+import { CoreToolContext } from '../core-tool.interface.js';
+import { BaseCoreTool } from '../base-core-tool.js';
+import { matchesPattern } from '../../utils/pattern-matcher.js';
 
 export interface LoadToolsetByNameParams {
   name: string;
@@ -24,18 +25,6 @@ function isLoadByPatterns(
   return typeof params === 'object' && params !== null && 'tools' in params;
 }
 
-function matchesPattern(toolName: string, pattern: string): boolean {
-  // Convert wildcard pattern to regex
-  // * matches any sequence of characters
-  const regexPattern = pattern
-    .split('*')
-    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escape special regex chars
-    .join('.*'); // Replace * with .*
-
-  const regex = new RegExp(`^${regexPattern}$`);
-  return regex.test(toolName);
-}
-
 function findMatchingTools(
   patterns: string[],
   toolDescriptions: Map<string, { serverName: string; description: string }>,
@@ -54,7 +43,7 @@ function findMatchingTools(
   return matchedTools;
 }
 
-export class LoadToolset implements ICoreTool {
+export class LoadToolset extends BaseCoreTool {
   readonly name = 'load_toolset';
 
   get tool(): Tool {
@@ -80,10 +69,6 @@ export class LoadToolset implements ICoreTool {
         // Can't use oneOf at top level - will validate in handler
       },
     };
-  }
-
-  isEnabled(config: ProxyConfig): boolean {
-    return config.hackyDiscovery === true;
   }
 
   async handle(

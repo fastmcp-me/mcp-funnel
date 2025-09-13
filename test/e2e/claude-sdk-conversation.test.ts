@@ -514,7 +514,7 @@ const expectStrictNumber = (response: string, expected?: number) => {
           await conversation.finish();
         }, 60000);
 
-        test('should respect exposeTools whitelist', async () => {
+        test('should respect exposeTools allowlist', async () => {
           const conversation = await startConversation(
             'config.with-exposed-tools.json',
           );

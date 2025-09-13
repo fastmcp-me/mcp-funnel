@@ -49,7 +49,10 @@ function logFile(): string {
 
 export function logEvent(level: LogLevel, event: string, data?: unknown): void {
   // Always write to file when logging is enabled or level is error
-  const loggingEnabled = process.env.MCP_FUNNEL_LOG === '1' || process.env.MCP_FUNNEL_LOG === 'true' || level === 'error';
+  const loggingEnabled =
+    process.env.MCP_FUNNEL_LOG === '1' ||
+    process.env.MCP_FUNNEL_LOG === 'true' ||
+    level === 'error';
   if (!loggingEnabled) return;
 
   // Respect level threshold for non-error levels
@@ -63,25 +66,33 @@ export function logEvent(level: LogLevel, event: string, data?: unknown): void {
     data,
   };
   try {
-    appendFileSync(logFile(), JSON.stringify(entry) + '\n', { encoding: 'utf8' });
+    appendFileSync(logFile(), JSON.stringify(entry) + '\n', {
+      encoding: 'utf8',
+    });
   } catch {
     // Avoid throwing from logger
   }
 }
 
-export function logError(context: string, rawError: unknown, extra?: unknown): void {
+export function logError(
+  context: string,
+  rawError: unknown,
+  extra?: unknown,
+): void {
   const err = rawError as { message?: string; stack?: string; code?: unknown };
   logEvent('error', `error:${context}`, {
     message: err?.message ?? String(rawError),
     stack: err?.stack,
-    code: (err as any)?.code,
+    code: (err as { code?: unknown })?.code,
     extra,
     argv: process.argv,
     cwd: process.cwd(),
   });
 }
 
-export function getServerStreamLogPath(serverName: string, stream: 'stderr' | 'stdout'): string {
+export function getServerStreamLogPath(
+  serverName: string,
+  stream: 'stderr' | 'stdout',
+): string {
   return resolve(LOG_DIR, `run-${runId()}-${serverName}.${stream}.log`);
 }
-
