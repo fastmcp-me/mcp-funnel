@@ -39,6 +39,7 @@
     "release": "yarn npm audit && npm publish --access public"
   },
   "dependencies": {
+    "@mcp-funnel/commands-core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.18.0",
     "zod": "^4.1.8"
   },

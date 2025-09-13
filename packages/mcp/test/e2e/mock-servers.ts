@@ -122,19 +122,14 @@ export const createMockGitHubServer = () =>
           ],
         }),
       ),
-      tool(
-        'get_me',
-        'Get authenticated user details',
-        {},
-        async () => ({
-          content: [
-            {
-              type: 'text',
-              text: 'Authenticated as mock-user',
-            },
-          ],
-        }),
-      ),
+      tool('get_me', 'Get authenticated user details', {}, async () => ({
+        content: [
+          {
+            type: 'text',
+            text: 'Authenticated as mock-user',
+          },
+        ],
+      })),
     ],
   });
 
@@ -228,18 +223,60 @@ export const createMockMemoryServer = () =>
           ],
         }),
       ),
+      tool('list_memories', 'List all stored memories', {}, async () => ({
+        content: [
+          {
+            type: 'text',
+            text: 'Listed all memories',
+          },
+        ],
+      })),
+    ],
+  });
+
+export const createMockTestServer = () =>
+  createSdkMcpServer({
+    name: 'mockserver',
+    version: '1.0.0',
+    tools: [
       tool(
-        'list_memories',
-        'List all stored memories',
-        {},
-        async () => ({
+        'echo',
+        'Echo back the message',
+        {
+          message: z.string().describe('Message to echo'),
+        },
+        async (args) => ({
           content: [
             {
               type: 'text',
-              text: 'Listed all memories',
+              text: args.message,
             },
           ],
         }),
       ),
+      tool('exposed_tool', 'A tool that should be exposed', {}, async () => ({
+        content: [
+          {
+            type: 'text',
+            text: 'Exposed tool called',
+          },
+        ],
+      })),
+      tool('hidden_tool', 'A tool that should be hidden', {}, async () => ({
+        content: [
+          {
+            type: 'text',
+            text: 'Hidden tool called',
+          },
+        ],
+      })),
+      tool('other_tool', 'Another tool for testing', {}, async () => ({
+        content: [
+          {
+            type: 'text',
+            text: 'Other tool called',
+          },
+        ],
+      })),
     ],
   });

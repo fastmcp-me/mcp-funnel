@@ -8,7 +8,7 @@ import {
   type CallToolResult,
   type Notification,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ProxyConfig } from './config.js';
+import { ProxyConfig, normalizeServers, TargetServer } from './config.js';
 import * as readline from 'readline';
 import { spawn, ChildProcess } from 'child_process';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
@@ -18,8 +18,9 @@ import { GetToolSchema } from './tools/get-tool-schema/index.js';
 import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
 import { LoadToolset } from './tools/load-toolset/index.js';
 import { matchesPattern } from './utils/pattern-matcher.js';
+import { discoverCommands, type ICommand } from '@mcp-funnel/commands-core';
 import { writeFileSync, mkdirSync, appendFileSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { resolve, join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logEvent, logError, getServerStreamLogPath } from './logger.js';
 
@@ -240,8 +241,11 @@ export class MCPProxy {
   private _server: Server;
   private _clients: Map<string, Client> = new Map();
   private _config: ProxyConfig;
-  private _toolMapping: Map<string, { client: Client; originalName: string }> =
-    new Map();
+  private _normalizedServers: TargetServer[];
+  private _toolMapping: Map<
+    string,
+    { client: Client | null; originalName: string; command?: ICommand }
+  > = new Map();
   private _dynamicallyEnabledTools: Set<string> = new Set();
   private _toolDescriptionCache: Map<
     string,
@@ -255,6 +259,7 @@ export class MCPProxy {
 
   constructor(config: ProxyConfig) {
     this._config = config;
+    this._normalizedServers = normalizeServers(config.servers);
 
     // Deprecation warning for legacy flags
     if (
@@ -284,6 +289,7 @@ export class MCPProxy {
   async initialize() {
     this.registerCoreTools();
     await this.connectToTargetServers();
+    await this.loadDevelopmentCommands();
     // Pre-populate caches so discovery/load operations work before first tools/list
     try {
       await this.populateToolCaches();
@@ -310,6 +316,59 @@ export class MCPProxy {
         }
         console.error(`[proxy] Registered core tool: ${tool.name}`);
       }
+    }
+  }
+
+  private async loadDevelopmentCommands(): Promise<void> {
+    // Only load if explicitly enabled in config
+    if (!this._config.commands?.enabled) return;
+
+    try {
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      const commandsPath = join(__dirname, '../../commands');
+
+      const registry = await discoverCommands(commandsPath);
+      const enabledCommands = this._config.commands.list || [];
+
+      // Register each enabled command with cmd__ prefix
+      for (const commandName of registry.getAllCommandNames()) {
+        const command = registry.getCommandForMCP(commandName);
+        if (
+          command &&
+          (enabledCommands.length === 0 ||
+            enabledCommands.includes(command.name))
+        ) {
+          const prefixedName = `cmd__${command.name}`;
+          const mcpDef = command.getMCPDefinition();
+
+          // Add to command cache with prefix
+          // Commands must have descriptions per their MCP definition
+          if (!mcpDef.description) {
+            throw new Error(
+              `Command ${command.name} is missing a description in its MCP definition`,
+            );
+          }
+          this._toolDescriptionCache.set(prefixedName, {
+            serverName: 'development-commands',
+            description: mcpDef.description,
+          });
+
+          this._toolDefinitionCache.set(prefixedName, {
+            serverName: 'development-commands',
+            tool: { ...mcpDef, name: prefixedName },
+          });
+
+          // Store mapping for execution
+          this._toolMapping.set(prefixedName, {
+            client: null, // Development commands don't use a client
+            originalName: command.name,
+            command, // Store the actual command instance
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load development commands:', error);
     }
   }
 
@@ -346,7 +405,7 @@ export class MCPProxy {
   }
 
   private async connectToTargetServers() {
-    const connectionPromises = this._config.servers.map(
+    const connectionPromises = this._normalizedServers.map(
       async (targetServer) => {
         try {
           logEvent('info', 'server:connect_start', {
@@ -430,16 +489,6 @@ export class MCPProxy {
     this._server.setRequestHandler(ListToolsRequestSchema, async () => {
       const allTools: Tool[] = [];
 
-      // In hacky discovery mode, only expose core tools
-      if (this._config.hackyDiscovery) {
-        for (const coreTool of this.coreTools.values()) {
-          allTools.push(coreTool.tool);
-        }
-        // Still populate the tool caches for bridge/schema tools
-        await this.populateToolCaches();
-        return { tools: allTools };
-      }
-
       // Add core tools
       for (const coreTool of this.coreTools.values()) {
         allTools.push(coreTool.tool);
@@ -452,17 +501,21 @@ export class MCPProxy {
           for (const tool of response.tools) {
             const fullToolName = `${serverName}__${tool.name}`;
 
-            // Cache tool descriptions and definitions for discovery
-            this._toolDescriptionCache.set(fullToolName, {
-              serverName,
-              description: tool.description || '',
-            });
-            this._toolDefinitionCache.set(fullToolName, {
-              serverName,
-              tool,
-            });
+            // Only cache tools that should be exposed according to filtering rules
+            if (this.shouldExposeTool(serverName, tool.name)) {
+              // Cache tool descriptions and definitions for discovery
+              this._toolDescriptionCache.set(fullToolName, {
+                serverName,
+                description: tool.description || '',
+              });
+              this._toolDefinitionCache.set(fullToolName, {
+                serverName,
+                tool,
+              });
+            }
 
-            // Always register in toolMapping for call handling
+            // Always register in toolMapping for call handling (even for hidden tools)
+            // This allows bridge_tool_request to work if a tool name is known
             this._toolMapping.set(fullToolName, {
               client,
               originalName: tool.name,
@@ -500,12 +553,52 @@ export class MCPProxy {
         }
       }
 
+      // Add development commands from cache
+      for (const [toolName, definition] of this._toolDefinitionCache) {
+        if (
+          toolName.startsWith('cmd__') &&
+          definition.serverName === 'development-commands'
+        ) {
+          // Check if command should be exposed based on configuration
+          if (
+            this.shouldExposeTool(
+              'development-commands',
+              toolName.replace('cmd__', ''),
+            )
+          ) {
+            allTools.push(definition.tool);
+          }
+        }
+      }
+
       logEvent('debug', 'tools:list_complete', { total: allTools.length });
       return { tools: allTools };
     });
 
     this._server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name: toolName, arguments: toolArgs } = request.params;
+
+      // Check if this is a development command
+      if (toolName.startsWith('cmd__')) {
+        const mapping = this._toolMapping.get(toolName);
+        if (mapping && mapping.command) {
+          try {
+            logEvent('info', 'tool:call_dev', { name: toolName });
+            const result = await mapping.command.executeViaMCP(toolArgs || {});
+            return result;
+          } catch (error) {
+            logError('tool:dev_execution_failed', error, { name: toolName });
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Command execution failed: ${error instanceof Error ? error.message : String(error)}`,
+                },
+              ],
+            };
+          }
+        }
+      }
 
       // Handle core tools
       const coreTool = this.coreTools.get(toolName);
@@ -519,18 +612,25 @@ export class MCPProxy {
         throw new Error(`Tool not found: ${toolName}`);
       }
 
-      try {
-        logEvent('info', 'tool:call_bridge', { name: toolName });
-        const result = await mapping.client.callTool({
-          name: mapping.originalName,
-          arguments: toolArgs,
-        });
-        logEvent('debug', 'tool:result', { name: toolName });
-        return result as CallToolResult;
-      } catch (error) {
-        console.error(`[proxy] Failed to call tool ${toolName}:`, error);
-        logError('tool:call_failed', error, { name: toolName });
-        throw error;
+      if ('client' in mapping) {
+        try {
+          logEvent('info', 'tool:call_bridge', { name: toolName });
+          if (!mapping.client) {
+            throw new Error(`Tool ${toolName} has no client connection`);
+          }
+          const result = await mapping.client.callTool({
+            name: mapping.originalName,
+            arguments: toolArgs,
+          });
+          logEvent('debug', 'tool:result', { name: toolName });
+          return result as CallToolResult;
+        } catch (error) {
+          console.error(`[proxy] Failed to call tool ${toolName}:`, error);
+          logError('tool:call_failed', error, { name: toolName });
+          throw error;
+        }
+      } else {
+        throw new Error(`Invalid tool mapping for: ${toolName}`);
       }
     });
   }
@@ -542,17 +642,21 @@ export class MCPProxy {
         for (const tool of response.tools) {
           const fullToolName = `${serverName}__${tool.name}`;
 
-          // Cache tool descriptions and definitions
-          this._toolDescriptionCache.set(fullToolName, {
-            serverName,
-            description: tool.description || '',
-          });
-          this._toolDefinitionCache.set(fullToolName, {
-            serverName,
-            tool,
-          });
+          // Only cache tools that should be exposed according to filtering rules
+          if (this.shouldExposeTool(serverName, tool.name)) {
+            // Cache tool descriptions and definitions
+            this._toolDescriptionCache.set(fullToolName, {
+              serverName,
+              description: tool.description || '',
+            });
+            this._toolDefinitionCache.set(fullToolName, {
+              serverName,
+              tool,
+            });
+          }
 
-          // Always register in toolMapping for call handling
+          // Always register in toolMapping for call handling (even for hidden tools)
+          // This allows bridge_tool_request to work if a tool name is known
           this._toolMapping.set(fullToolName, {
             client,
             originalName: tool.name,
