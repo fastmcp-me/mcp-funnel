@@ -45,7 +45,9 @@ async function main() {
     const rawConfig = JSON.parse(configFile);
     config = ProxyConfigSchema.parse(rawConfig);
   } catch (error) {
-    console.error('Failed to load configuration:', error);
+    if (!String(error)?.includes('ENOENT'))
+      console.error('Failed to load configuration:', error);
+
     logError('config-load', error, { path: resolvedPath });
     console.error('\nUsage:');
     console.error(
