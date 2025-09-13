@@ -4,16 +4,16 @@ import { ProxyConfig } from '../../src/config.js';
 
 // Simplified integration test that actually tests the behavior
 
-describe('HackyDiscovery Real Behavior', () => {
+describe('Core Tools Configuration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('exposes only core tools when hackyDiscovery is true', async () => {
+  it('exposes core tools by default (legacy flags are ignored)', async () => {
     const config: ProxyConfig = {
       servers: [],
-      hackyDiscovery: true,
-      enableDynamicDiscovery: true,
+      hackyDiscovery: true, // Legacy flag - ignored but doesn't break
+      enableDynamicDiscovery: true, // Legacy flag - ignored but doesn't break
     };
 
     const proxy = new MCPProxy(config);
@@ -23,31 +23,33 @@ describe('HackyDiscovery Real Behavior', () => {
     const coreTools = Array.from(proxy['coreTools'].values());
     const toolNames = coreTools.map((t) => t.name);
 
-    // Should only have the core tools
+    // Should have all core tools by default
     expect(toolNames).toContain('discover_tools_by_words');
     expect(toolNames).toContain('get_tool_schema');
     expect(toolNames).toContain('bridge_tool_request');
-    // May also have load_toolset if enabled
+    expect(toolNames).toContain('load_toolset');
 
     // Importantly, should NOT have server tools exposed initially
     expect(toolNames).not.toContain('github__create_issue');
   });
 
-  it('exposes all tools when hackyDiscovery is false', async () => {
+  it('exposes no core tools when explicitly disabled via exposeCoreTools', async () => {
     const config: ProxyConfig = {
       servers: [],
-      hackyDiscovery: false,
+      exposeCoreTools: [], // Explicitly disable all core tools
     };
 
     const proxy = new MCPProxy(config);
     await proxy.initialize();
 
-    // Should not have hacky discovery tools
+    // Should not have any core tools when explicitly disabled
     const coreTools = Array.from(proxy['coreTools'].values());
     const toolNames = coreTools.map((t) => t.name);
 
     expect(toolNames).not.toContain('get_tool_schema');
     expect(toolNames).not.toContain('bridge_tool_request');
+    expect(toolNames).not.toContain('discover_tools_by_words');
+    expect(toolNames).not.toContain('load_toolset');
   });
 
   it('allows dynamic discovery and execution through bridge', async () => {

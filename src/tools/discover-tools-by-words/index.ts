@@ -1,6 +1,6 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { ICoreTool, CoreToolContext } from '../core-tool.interface.js';
-import { ProxyConfig } from '../../config.js';
+import { CoreToolContext } from '../core-tool.interface.js';
+import { BaseCoreTool } from '../base-core-tool.js';
 
 export interface DiscoverToolsParams {
   words: string;
@@ -18,21 +18,44 @@ function searchToolDescriptions(
   words: string,
   toolDescriptions: Map<string, { serverName: string; description: string }>,
 ): ToolMatch[] {
-  const keywords = words.toLowerCase().split(/\s+/).filter(Boolean);
+  // Split on whitespace and hyphens to capture queries like "code-reasoning"
+  const keywords = words
+    .toLowerCase()
+    .split(/[\s-]+/)
+    .filter(Boolean);
   const matches: ToolMatch[] = [];
 
   for (const [toolName, { serverName, description }] of toolDescriptions) {
     const lowerDesc = description.toLowerCase();
+    const lowerName = toolName.toLowerCase();
+    const lowerServer = serverName.toLowerCase();
+    const nameTokens = lowerName.split(/[^a-z0-9]+/).filter(Boolean);
+    const serverTokens = lowerServer.split(/[^a-z0-9]+/).filter(Boolean);
+
     let score = 0;
 
-    // Calculate match score based on keyword presence
+    // Calculate match score across description, tool name, and server name
     for (const keyword of keywords) {
+      // Description scoring: prefer whole-word matches over substrings
       if (lowerDesc.includes(keyword)) {
-        // Higher score for exact word match vs substring match
         const wordBoundaryMatch = new RegExp(`\\b${keyword}\\b`, 'i').test(
           description,
         );
         score += wordBoundaryMatch ? 2 : 1;
+      }
+
+      // Tool name scoring: token match preferred, then substring
+      if (nameTokens.includes(keyword)) {
+        score += 2;
+      } else if (lowerName.includes(keyword)) {
+        score += 1;
+      }
+
+      // Server name scoring: token match preferred, then substring
+      if (serverTokens.includes(keyword)) {
+        score += 2;
+      } else if (lowerServer.includes(keyword)) {
+        score += 1;
       }
     }
 
@@ -46,7 +69,7 @@ function searchToolDescriptions(
     }
   }
 
-  // Sort by score (highest first), then alphabetically
+  // Sort by score (highest first), then alphabetically for stable output
   return matches.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     return a.name.localeCompare(b.name);
@@ -61,7 +84,7 @@ function searchToolDescriptions(
  * @internal
  * @see file://../core-tool.interface.ts#L33
  */
-export class DiscoverToolsByWords implements ICoreTool {
+export class DiscoverToolsByWords extends BaseCoreTool {
   readonly name = 'discover_tools_by_words';
 
   get tool(): Tool {
@@ -86,10 +109,6 @@ export class DiscoverToolsByWords implements ICoreTool {
         required: ['words'],
       },
     };
-  }
-
-  isEnabled(config: ProxyConfig): boolean {
-    return config.enableDynamicDiscovery === true;
   }
 
   async handle(
@@ -129,7 +148,7 @@ export class DiscoverToolsByWords implements ICoreTool {
         content: [
           {
             type: 'text',
-            text: `Found and enabled ${matches.length} tools:\n${enabledList}`,
+            text: `Found and enabled ${matches.length} tools:\n${enabledList}\n\nNote: Always call tools using the fully prefixed name exactly as listed. To run a tool next, use bridge_tool_request with {"tool":"<full_name>","arguments":{...}} and consult get_tool_schema first for required arguments.`,
           },
         ],
       };
@@ -147,14 +166,17 @@ export class DiscoverToolsByWords implements ICoreTool {
     }
 
     const matchList = matches
-      .map((m) => `- ${m.name}: ${m.description}`)
+      .map(
+        (m) =>
+          `- ${m.name}: ${m.description}\n  Example: bridge_tool_request {"tool":"${m.name}","arguments":{}}`,
+      )
       .join('\n');
 
     return {
       content: [
         {
           type: 'text',
-          text: `Found ${matches.length} matching tools:\n${matchList}\n\nUse enable=true to activate these tools.`,
+          text: `Found ${matches.length} matching tools:\n${matchList}\n\nTip: Always use the fully prefixed name when executing. Use enable=true to activate these tools if dynamic discovery is desired.`,
         },
       ],
     };

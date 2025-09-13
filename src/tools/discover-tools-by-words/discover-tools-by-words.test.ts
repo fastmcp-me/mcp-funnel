@@ -80,20 +80,39 @@ describe('DiscoverToolsByWords', () => {
   });
 
   describe('isEnabled', () => {
-    it('should be enabled when enableDynamicDiscovery is true', () => {
+    it('should be enabled when exposeCoreTools is not specified', () => {
+      expect(tool.isEnabled({ servers: [] })).toBe(true);
+    });
+
+    it('should be disabled when exposeCoreTools is empty array', () => {
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: [] })).toBe(false);
+    });
+
+    it('should be enabled when exposeCoreTools includes tool name', () => {
       expect(
-        tool.isEnabled({ servers: [], enableDynamicDiscovery: true }),
+        tool.isEnabled({
+          servers: [],
+          exposeCoreTools: ['discover_tools_by_words'],
+        }),
       ).toBe(true);
     });
 
-    it('should be disabled when enableDynamicDiscovery is false', () => {
+    it('should be enabled when exposeCoreTools has matching pattern', () => {
       expect(
-        tool.isEnabled({ servers: [], enableDynamicDiscovery: false }),
-      ).toBe(false);
+        tool.isEnabled({ servers: [], exposeCoreTools: ['discover_*'] }),
+      ).toBe(true);
     });
 
-    it('should be disabled when enableDynamicDiscovery is undefined', () => {
-      expect(tool.isEnabled({ servers: [] })).toBe(false);
+    it('should be enabled when exposeCoreTools is ["*"]', () => {
+      expect(tool.isEnabled({ servers: [], exposeCoreTools: ['*'] })).toBe(
+        true,
+      );
+    });
+
+    it('should be disabled when exposeCoreTools excludes the tool', () => {
+      expect(
+        tool.isEnabled({ servers: [], exposeCoreTools: ['other_tool'] }),
+      ).toBe(false);
     });
   });
 

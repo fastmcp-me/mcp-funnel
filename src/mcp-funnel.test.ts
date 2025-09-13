@@ -218,7 +218,7 @@ describe('MCPProxy', () => {
       expect(mockClient.listTools).toHaveBeenCalled();
     });
 
-    it('should not register core tools when hackyDiscovery is disabled', async () => {
+    it('should not register core tools when explicitly excluded via exposeCoreTools', async () => {
       const config: ProxyConfig = {
         servers: [
           {
@@ -226,7 +226,7 @@ describe('MCPProxy', () => {
             command: 'echo',
           },
         ],
-        hackyDiscovery: false,
+        exposeCoreTools: ['nonexistent_tool'], // Only expose a non-existent tool, effectively disabling all
       };
 
       const proxy = new MCPProxy(config);
@@ -246,10 +246,12 @@ describe('MCPProxy', () => {
       const handler = listToolsCall?.[1];
       const result = await handler?.({}, {});
 
-      // Should not include hacky discovery tools
+      // Should not include any core tools
       const toolNames = result?.tools?.map((t: Tool) => t.name) ?? [];
       expect(toolNames).not.toContain('get_tool_schema');
       expect(toolNames).not.toContain('bridge_tool_request');
+      expect(toolNames).not.toContain('discover_tools_by_words');
+      expect(toolNames).not.toContain('load_toolset');
     });
   });
 

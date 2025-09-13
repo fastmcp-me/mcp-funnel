@@ -1,13 +1,14 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { ICoreTool, CoreToolContext } from '../core-tool.interface.js';
-import { ProxyConfig } from '../../config.js';
+import { CoreToolContext } from '../core-tool.interface.js';
+import { BaseCoreTool } from '../base-core-tool.js';
+import { resolveToolName } from '../../utils/tool-resolver.js';
 
 export interface BridgeToolRequestParams {
   tool: string;
   arguments?: Record<string, unknown>;
 }
 
-export class BridgeToolRequest implements ICoreTool {
+export class BridgeToolRequest extends BaseCoreTool {
   readonly name = 'bridge_tool_request';
 
   get tool(): Tool {
@@ -35,10 +36,6 @@ export class BridgeToolRequest implements ICoreTool {
     };
   }
 
-  isEnabled(config: ProxyConfig): boolean {
-    return config.hackyDiscovery === true;
-  }
-
   async handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
@@ -47,24 +44,43 @@ export class BridgeToolRequest implements ICoreTool {
       throw new Error('Missing or invalid "tool" parameter');
     }
 
-    const toolName = args.tool;
     const toolArguments = args.arguments as Record<string, unknown> | undefined;
 
     if (!context.toolMapping) {
       throw new Error('Tool mapping not available in context');
     }
 
-    const mapping = context.toolMapping.get(toolName);
-    if (!mapping) {
+    // Use the shared resolver
+    const resolution = resolveToolName(
+      args.tool,
+      context.toolMapping,
+      context.config,
+    );
+
+    if (!resolution.resolved) {
+      const message =
+        resolution.error?.message || `Tool not found: ${args.tool}`;
+      const fullMessage = resolution.error?.isAmbiguous
+        ? message
+        : `${message} Recommended flow: get_tool_schema for the tool, then use bridge_tool_request with {"tool":"<full_name>","arguments":{...}}.`;
+
       return {
         content: [
           {
             type: 'text',
-            text: `Tool not found: ${toolName}. Use discover_tools_by_words to find available tools.`,
+            text: fullMessage,
           },
         ],
         isError: true,
       };
+    }
+
+    const toolName = resolution.toolName!;
+    const mapping = context.toolMapping.get(toolName);
+    if (!mapping) {
+      throw new Error(
+        `Internal error: resolved tool ${toolName} not found in mapping`,
+      );
     }
 
     try {
