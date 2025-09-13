@@ -60,22 +60,22 @@ describe('DiscoverToolsByWords', () => {
       const toolDef = tool.tool;
       expect(toolDef.name).toBe('discover_tools_by_words');
       expect(toolDef.description).toContain('Search for tools by keywords');
-      expect(toolDef.inputSchema).toEqual({
-        type: 'object',
-        properties: {
-          words: {
-            type: 'string',
-            description:
-              'Space-separated keywords to search for in tool descriptions',
-          },
-          enable: {
-            type: 'boolean',
-            description: 'If true, automatically enable the discovered tools',
-            default: false,
-          },
-        },
-        required: ['words'],
-      });
+      expect(toolDef.inputSchema.type).toBe('object');
+      expect(toolDef.inputSchema.required).toEqual(['words']);
+      expect(toolDef.inputSchema.properties?.words).toBeDefined();
+      expect(toolDef.inputSchema.properties?.enable).toBeDefined();
+      const wordsSchema = toolDef.inputSchema.properties?.words as {
+        type: string;
+        description: string;
+      };
+      const enableSchema = toolDef.inputSchema.properties?.enable as {
+        type: string;
+        description: string;
+        default: boolean;
+      };
+      expect(wordsSchema.type).toBe('string');
+      expect(enableSchema.type).toBe('boolean');
+      expect(enableSchema.default).toBe(false);
     });
   });
 
@@ -126,9 +126,7 @@ describe('DiscoverToolsByWords', () => {
       expect(textContent.text).toContain('github__create_issue');
       expect(textContent.text).toContain('github__list_issues');
       expect(textContent.text).toContain('github__close_issue');
-      expect(textContent.text).toContain(
-        'Use enable=true to activate these tools',
-      );
+      expect(textContent.text).toContain('Review these results carefully');
     });
 
     it('should find tools with partial keyword matches', async () => {
@@ -245,7 +243,7 @@ describe('DiscoverToolsByWords', () => {
       // Should treat non-boolean as false
       expect(enabledTools).toHaveLength(0);
       const textContent = result.content[0] as { type: string; text: string };
-      expect(textContent.text).toContain('Use enable=true to activate');
+      expect(textContent.text).toContain('Review these results carefully');
     });
 
     it('should sort results by score and then alphabetically', async () => {

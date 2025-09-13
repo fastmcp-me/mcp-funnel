@@ -91,18 +91,19 @@ export class DiscoverToolsByWords extends BaseCoreTool {
     return {
       name: this.name,
       description:
-        'Search for tools by keywords in their descriptions. Returns matching tools that can be dynamically enabled to reduce context usage.',
+        "Search for tools by keywords in their descriptions. IMPORTANT: Use minimal, specific keywords that directly match the user's intent. Each keyword will match ANY tool containing that word - avoid generic terms (github, file, memory) unless the user explicitly mentions them. When enable=true, carefully review the number of matched tools before activation as each tool increases context usage.",
       inputSchema: {
         type: 'object',
         properties: {
           words: {
             type: 'string',
             description:
-              'Space-separated keywords to search for in tool descriptions',
+              'Space-separated keywords to search for in tool descriptions. Be precise and minimal - use only terms that directly match the user\'s intent. Each keyword matches tools containing that word anywhere in their name/description. Avoid platform names (github, filesystem) unless explicitly mentioned by the user. Example: for "PR review", use "pull request review" not "github pull request review code".',
           },
           enable: {
             type: 'boolean',
-            description: 'If true, automatically enable the discovered tools',
+            description:
+              'If true, automatically enable ALL discovered tools. WARNING: This increases context usage. Consider discovering first (enable=false), reviewing results, then using load_toolset to enable specific tools if many matches are found.',
             default: false,
           },
         },
@@ -176,7 +177,7 @@ export class DiscoverToolsByWords extends BaseCoreTool {
       content: [
         {
           type: 'text',
-          text: `Found ${matches.length} matching tools:\n${matchList}\n\nTip: Always use the fully prefixed name when executing. Use enable=true to activate these tools if dynamic discovery is desired.`,
+          text: `Found ${matches.length} matching tools:\n${matchList}\n\nReview these results carefully. To activate:\n- If ALL tools match user intent: Run again with enable=true\n- If only SOME match: Use load_toolset with specific tool names\n- If too broad: Search again with more specific keywords\n\nRemember: Activating unnecessary tools increases context usage.`,
         },
       ],
     };
