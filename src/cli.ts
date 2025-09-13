@@ -1,13 +1,17 @@
 import { MCPProxy } from './mcp-funnel.js';
 import { ProxyConfig, ProxyConfigSchema } from './config.js';
-import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { readFileSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logEvent, logError } from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOG_DIR = resolve(__dirname, '../.logs');
-try { mkdirSync(LOG_DIR, { recursive: true }); } catch {}
+try {
+  mkdirSync(LOG_DIR, { recursive: true });
+} catch {
+  // Directory creation failed, but logging will still work if dir exists
+}
 
 // Global error handlers
 process.on('uncaughtException', (error) => {
@@ -85,7 +89,10 @@ async function main() {
 
   logEvent('info', 'cli:config_loaded', {
     path: resolvedPath,
-    servers: (config.servers || []).map((s) => ({ name: s.name, cmd: s.command })),
+    servers: (config.servers || []).map((s) => ({
+      name: s.name,
+      cmd: s.command,
+    })),
     hackyDiscovery: config.hackyDiscovery === true,
     enableDynamicDiscovery: config.enableDynamicDiscovery === true,
   });

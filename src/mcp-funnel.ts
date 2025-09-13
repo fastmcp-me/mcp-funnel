@@ -17,6 +17,7 @@ import { DiscoverToolsByWords } from './tools/discover-tools-by-words/index.js';
 import { GetToolSchema } from './tools/get-tool-schema/index.js';
 import { BridgeToolRequest } from './tools/bridge-tool-request/index.js';
 import { LoadToolset } from './tools/load-toolset/index.js';
+import { matchesPattern } from './utils/pattern-matcher.js';
 import { writeFileSync, mkdirSync, appendFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -30,24 +31,38 @@ const LOG_DIR = resolve(__dirname, '../.logs');
 // Ensure log directory exists
 try {
   mkdirSync(LOG_DIR, { recursive: true });
-} catch (error) {
+} catch (_error) {
   // Log dir might already exist
 }
 
-function legacyErrorLog(error: any, context: string = 'general', serverName?: string) {
+function legacyErrorLog(
+  error: unknown,
+  context: string = 'general',
+  serverName?: string,
+) {
   const timestamp = new Date().toISOString();
   const prefix = serverName ? `${serverName}-` : '';
-  const logFile = resolve(LOG_DIR, `error-${timestamp.replace(/:/g, '-')}-${prefix}${context}.log`);
-  
+  const logFile = resolve(
+    LOG_DIR,
+    `error-${timestamp.replace(/:/g, '-')}-${prefix}${context}.log`,
+  );
+
+  const err = error as {
+    message?: string;
+    stack?: string;
+    code?: string;
+    syscall?: string;
+    path?: string;
+  };
   const errorDetails = {
     timestamp,
     context,
     serverName,
-    message: error?.message || String(error),
-    stack: error?.stack,
-    code: error?.code,
-    syscall: error?.syscall,
-    path: error?.path,
+    message: err?.message || String(error),
+    stack: err?.stack,
+    code: err?.code,
+    syscall: err?.syscall,
+    path: err?.path,
     processInfo: {
       pid: process.pid,
       argv: process.argv,
@@ -58,7 +73,7 @@ function legacyErrorLog(error: any, context: string = 'general', serverName?: st
       },
     },
   };
-  
+
   try {
     writeFileSync(logFile, JSON.stringify(errorDetails, null, 2));
     console.error(`[proxy] Error logged to: ${logFile}`);
@@ -75,7 +90,7 @@ interface TransportOptions {
 
 // Custom transport that prefixes server stderr logs
 export class PrefixedStdioClientTransport {
-  private readonly serverName: string;
+  private readonly _serverName: string;
   private process?: ChildProcess;
   private messageHandlers: ((message: JSONRPCMessage) => void)[] = [];
   private errorHandlers: ((error: Error) => void)[] = [];
@@ -96,12 +111,20 @@ export class PrefixedStdioClientTransport {
         stdio: ['pipe', 'pipe', 'pipe'], // Full control over all streams
         cwd: process.cwd(), // Explicitly set cwd
       });
-      logEvent('debug', 'transport:start', { server: this._serverName, command: this.options.command, args: this.options.args });
+      logEvent('debug', 'transport:start', {
+        server: this._serverName,
+        command: this.options.command,
+        args: this.options.args,
+      });
     } catch (error) {
       console.error(`[${this._serverName}] Failed to spawn process:`, error);
       // Keep legacy error file + structured log
       legacyErrorLog(error, 'spawn-failed', this._serverName);
-      logError('spawn-failed', error, { server: this._serverName, command: this.options.command, args: this.options.args });
+      logError('spawn-failed', error, {
+        server: this._serverName,
+        command: this.options.command,
+        args: this.options.args,
+      });
       throw error;
     }
 
@@ -116,8 +139,13 @@ export class PrefixedStdioClientTransport {
         if (line.trim()) {
           console.error(`[${this._serverName}] ${line}`);
           try {
-            appendFileSync(getServerStreamLogPath(this._serverName, 'stderr'), `[${new Date().toISOString()}] ${line}\n`);
-          } catch {}
+            appendFileSync(
+              getServerStreamLogPath(this._serverName, 'stderr'),
+              `[${new Date().toISOString()}] ${line}\n`,
+            );
+          } catch {
+            // Failed to append to stderr log file
+          }
         }
       });
     }
@@ -138,9 +166,17 @@ export class PrefixedStdioClientTransport {
             // Not a JSON message, might be a log line that went to stdout
             console.error(`[${this._serverName}] ${line}`);
             try {
-              appendFileSync(getServerStreamLogPath(this._serverName, 'stdout'), `[${new Date().toISOString()}] ${line}\n`);
-            } catch {}
-            logEvent('debug', 'transport:nonjson_stdout', { server: this._serverName, line: line.slice(0, 200) });
+              appendFileSync(
+                getServerStreamLogPath(this._serverName, 'stdout'),
+                `[${new Date().toISOString()}] ${line}\n`,
+              );
+            } catch {
+              // Failed to append to stdout log file
+            }
+            logEvent('debug', 'transport:nonjson_stdout', {
+              server: this._serverName,
+              line: line.slice(0, 200),
+            });
           }
         }
       });
@@ -158,8 +194,16 @@ export class PrefixedStdioClientTransport {
       if (code !== 0) {
         const errorMsg = `Process exited with code ${code}, signal ${signal}`;
         console.error(`[${this._serverName}] ${errorMsg}`);
-        legacyErrorLog({ message: errorMsg, code, signal }, 'process-exit', this._serverName);
-        logError('process-exit', new Error(errorMsg), { server: this._serverName, code, signal });
+        legacyErrorLog(
+          { message: errorMsg, code, signal },
+          'process-exit',
+          this._serverName,
+        );
+        logError('process-exit', new Error(errorMsg), {
+          server: this._serverName,
+          code,
+          signal,
+        });
       }
       this.closeHandlers.forEach((handler) => handler());
     });
@@ -203,12 +247,25 @@ export class MCPProxy {
     string,
     { serverName: string; description: string }
   > = new Map();
-  private _toolDefinitionCache: Map<string, { serverName: string; tool: Tool }> =
-    new Map();
+  private _toolDefinitionCache: Map<
+    string,
+    { serverName: string; tool: Tool }
+  > = new Map();
   private coreTools: Map<string, ICoreTool> = new Map();
 
   constructor(config: ProxyConfig) {
     this._config = config;
+
+    // Deprecation warning for legacy flags
+    if (
+      config.enableDynamicDiscovery !== undefined ||
+      config.hackyDiscovery !== undefined
+    ) {
+      console.warn(
+        '[proxy] enableDynamicDiscovery and hackyDiscovery are deprecated. Use exposeCoreTools instead.',
+      );
+    }
+
     this._server = new Server(
       {
         name: 'mcp-funnel',
@@ -289,49 +346,60 @@ export class MCPProxy {
   }
 
   private async connectToTargetServers() {
-    const connectionPromises = this._config.servers.map(async (targetServer) => {
-      try {
-        logEvent('info', 'server:connect_start', { name: targetServer.name, command: targetServer.command, args: targetServer.args });
-        const client = new Client({
-          name: `proxy-client-${targetServer.name}`,
-          version: '1.0.0',
-        });
+    const connectionPromises = this._config.servers.map(
+      async (targetServer) => {
+        try {
+          logEvent('info', 'server:connect_start', {
+            name: targetServer.name,
+            command: targetServer.command,
+            args: targetServer.args,
+          });
+          const client = new Client({
+            name: `proxy-client-${targetServer.name}`,
+            version: '1.0.0',
+          });
 
-        const transport = new PrefixedStdioClientTransport(targetServer.name, {
-          command: targetServer.command,
-          args: targetServer.args || [],
-          env: { ...process.env, ...targetServer.env } as Record<string, string>,
-        });
+          const transport = new PrefixedStdioClientTransport(
+            targetServer.name,
+            {
+              command: targetServer.command,
+              args: targetServer.args || [],
+              env: { ...process.env, ...targetServer.env } as Record<
+                string,
+                string
+              >,
+            },
+          );
 
-        await client.connect(transport);
-        this._clients.set(targetServer.name, client);
-        console.error(`[proxy] Connected to: ${targetServer.name}`);
-        logEvent('info', 'server:connect_success', { name: targetServer.name });
-        return { name: targetServer.name, status: 'connected' as const };
-      } catch (error) {
-        console.error(`[proxy] Failed to connect to ${targetServer.name}:`, error);
-        legacyErrorLog(error, 'connection-failed', targetServer.name);
-        logError('connection-failed', error, { name: targetServer.name, command: targetServer.command, args: targetServer.args });
-        // Do not throw; continue starting proxy with remaining servers
-        return { name: targetServer.name, status: 'failed' as const, error };
-      }
-    });
+          await client.connect(transport);
+          this._clients.set(targetServer.name, client);
+          console.error(`[proxy] Connected to: ${targetServer.name}`);
+          logEvent('info', 'server:connect_success', {
+            name: targetServer.name,
+          });
+          return { name: targetServer.name, status: 'connected' as const };
+        } catch (error) {
+          console.error(
+            `[proxy] Failed to connect to ${targetServer.name}:`,
+            error,
+          );
+          legacyErrorLog(error, 'connection-failed', targetServer.name);
+          logError('connection-failed', error, {
+            name: targetServer.name,
+            command: targetServer.command,
+            args: targetServer.args,
+          });
+          // Do not throw; continue starting proxy with remaining servers
+          return { name: targetServer.name, status: 'failed' as const, error };
+        }
+      },
+    );
 
     const results = await Promise.allSettled(connectionPromises);
-    const summary = results.map((r) => (r.status === 'fulfilled' ? r.value : r.reason));
+    const summary = results.map((r) =>
+      r.status === 'fulfilled' ? r.value : r.reason,
+    );
     logEvent('info', 'server:connect_summary', { summary });
-  }
-
-  private matchesPattern(toolName: string, pattern: string): boolean {
-    // Convert wildcard pattern to regex
-    // * matches any sequence of characters
-    const regexPattern = pattern
-      .split('*')
-      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escape special regex chars
-      .join('.*'); // Replace * with .*
-
-    const regex = new RegExp(`^${regexPattern}$`);
-    return regex.test(toolName);
   }
 
   private shouldExposeTool(serverName: string, toolName: string): boolean {
@@ -346,13 +414,13 @@ export class MCPProxy {
     if (this._config.exposeTools) {
       // Check if tool matches any expose pattern (only checking prefixed name)
       return this._config.exposeTools.some((pattern) =>
-        this.matchesPattern(fullToolName, pattern),
+        matchesPattern(fullToolName, pattern),
       );
     }
     if (this._config.hideTools) {
       // Check if tool matches any hide pattern (only checking prefixed name)
       return !this._config.hideTools.some((pattern) =>
-        this.matchesPattern(fullToolName, pattern),
+        matchesPattern(fullToolName, pattern),
       );
     }
     return true;

@@ -1,13 +1,14 @@
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { ICoreTool, CoreToolContext } from '../core-tool.interface.js';
-import { ProxyConfig } from '../../config.js';
+import { CoreToolContext } from '../core-tool.interface.js';
+import { BaseCoreTool } from '../base-core-tool.js';
+import { resolveToolName } from '../../utils/tool-resolver.js';
 
 export interface BridgeToolRequestParams {
   tool: string;
   arguments?: Record<string, unknown>;
 }
 
-export class BridgeToolRequest implements ICoreTool {
+export class BridgeToolRequest extends BaseCoreTool {
   readonly name = 'bridge_tool_request';
 
   get tool(): Tool {
@@ -35,10 +36,6 @@ export class BridgeToolRequest implements ICoreTool {
     };
   }
 
-  isEnabled(config: ProxyConfig): boolean {
-    return config.hackyDiscovery === true;
-  }
-
   async handle(
     args: Record<string, unknown>,
     context: CoreToolContext,
@@ -47,62 +44,43 @@ export class BridgeToolRequest implements ICoreTool {
       throw new Error('Missing or invalid "tool" parameter');
     }
 
-    let toolName = args.tool;
     const toolArguments = args.arguments as Record<string, unknown> | undefined;
 
     if (!context.toolMapping) {
       throw new Error('Tool mapping not available in context');
     }
 
-    let mapping = context.toolMapping.get(toolName);
-    if (!mapping) {
-      const allowShort = context.config.allowShortToolNames === true;
-      const looksShort = !toolName.includes('__');
-      if (allowShort && looksShort) {
-        const candidates = Array.from(context.toolMapping.keys()).filter((k) =>
-          k.endsWith(`__${toolName}`),
-        );
-        if (candidates.length === 1) {
-          toolName = candidates[0];
-          mapping = context.toolMapping.get(toolName);
-        } else if (candidates.length > 1) {
-          const list = candidates.slice(0, 5).join(', ');
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Ambiguous tool name: ${args.tool}. Candidates: ${list}. Use the full prefixed name exactly as listed by discovery.`,
-              },
-            ],
-            isError: true,
-          };
-        }
-      }
-    }
-    if (!mapping) {
-      const lower = toolName.toLowerCase();
-      const suggestions = Array.from(context.toolMapping.keys())
-        .filter((k) => k.toLowerCase().includes(lower))
-        .slice(0, 3);
-      const hintParts = [
-        `Tool not found: ${args.tool}. Use discover_tools_by_words to find available tools.`,
-        'To execute a tool, always use the fully prefixed name (e.g., "server__tool").',
-      ];
-      if (suggestions.length > 0) {
-        hintParts.push(`Did you mean: ${suggestions.join(', ')} ?`);
-      }
-      hintParts.push(
-        'Recommended flow: get_tool_schema for the tool, then use bridge_tool_request with {"tool":"<full_name>","arguments":{...}}.',
-      );
+    // Use the shared resolver
+    const resolution = resolveToolName(
+      args.tool,
+      context.toolMapping,
+      context.config,
+    );
+
+    if (!resolution.resolved) {
+      const message =
+        resolution.error?.message || `Tool not found: ${args.tool}`;
+      const fullMessage = resolution.error?.isAmbiguous
+        ? message
+        : `${message} Recommended flow: get_tool_schema for the tool, then use bridge_tool_request with {"tool":"<full_name>","arguments":{...}}.`;
+
       return {
         content: [
           {
             type: 'text',
-            text: hintParts.join(' '),
+            text: fullMessage,
           },
         ],
         isError: true,
       };
+    }
+
+    const toolName = resolution.toolName!;
+    const mapping = context.toolMapping.get(toolName);
+    if (!mapping) {
+      throw new Error(
+        `Internal error: resolved tool ${toolName} not found in mapping`,
+      );
     }
 
     try {

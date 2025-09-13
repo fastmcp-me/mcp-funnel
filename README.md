@@ -113,8 +113,9 @@ Create a `.mcp-funnel.json` file in your project directory:
   - `command`: Command to execute
   - `args`: Command arguments (optional)
   - `env`: Environment variables (optional)
-- **exposeTools**: Whitelist patterns for tools to expose (optional)
-- **hideTools**: Blacklist patterns for tools to hide (optional)
+- **exposeTools**: Include patterns for external tools to expose (optional)
+- **hideTools**: Exclude patterns for external tools to hide (optional)
+- **exposeCoreTools**: Include patterns for internal MCP Funnel tools (optional, defaults to all enabled)
 - **enableDynamicDiscovery**: Enable experimental dynamic tool discovery (default: false)
 - **hackyDiscovery**: Enable minimal context mode with dynamic tool bridging (default: false)
 
@@ -149,6 +150,22 @@ Patterns match against the prefixed tool names (`serverName__toolName`) and supp
 ```
 
 **Note:** Always use the server prefix (e.g., `github__`, `memory__`) to target specific servers' tools. Use `*__` at the beginning to match tools from any server.
+
+### Core Tool Filtering
+
+MCP Funnel includes internal tools for discovery and bridging. Control which core tools are exposed using `exposeCoreTools`:
+
+```json
+"exposeCoreTools": ["discover_*", "load_toolset"]  // Only expose discovery tools and toolset loading
+```
+
+Available core tools:
+- `discover_tools_by_words` - Search for tools by keywords
+- `get_tool_schema` - Get input schema for tools
+- `bridge_tool_request` - Execute tools dynamically
+- `load_toolset` - Load predefined tool patterns
+
+If `exposeCoreTools` is not specified, all core tools are enabled by default.
 
 ## 🚀 Usage
 
