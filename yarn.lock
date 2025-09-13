@@ -866,31 +866,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mcp-funnel/mcp@workspace:packages/mcp":
-  version: 0.0.0-use.local
-  resolution: "@mcp-funnel/mcp@workspace:packages/mcp"
-  dependencies:
-    "@anthropic-ai/claude-code": "npm:^1.0.112"
-    "@hono/zod-validator": "npm:^0.7.2"
-    "@modelcontextprotocol/sdk": "npm:^1.18.0"
-    "@types/node": "npm:^24.3.1"
-    esbuild: "npm:^0.25.9"
-    globby: "npm:^14.1.0"
-    tsx: "npm:^4.20.5"
-    typescript: "npm:^5.9.2"
-    vite-tsconfig-paths: "npm:^5.1.4"
-    vitest: "npm:^3.2.4"
-    zod: "npm:^4.1.8"
-  bin:
-    mcp: ./dist/cli.js
-  languageName: unknown
-  linkType: soft
-
 "@mcp-funnel/server@workspace:packages/server":
   version: 0.0.0-use.local
   resolution: "@mcp-funnel/server@workspace:packages/server"
   dependencies:
     "@hono/node-server": "npm:^1.19.2"
+    "@hono/zod-validator": "npm:^0.7.2"
     "@types/node": "npm:^24.3.2"
     "@types/ws": "npm:^8.18.1"
     esbuild: "npm:^0.25.9"
@@ -910,6 +891,7 @@ __metadata:
     "@react-router/node": "npm:^7.9.1"
     "@react-router/serve": "npm:^7.9.1"
     "@tanstack/react-query": "npm:^5.63.0"
+    "@tanstack/react-query-devtools": "npm:^5.87.4"
     "@types/react": "npm:^18.3.17"
     "@types/react-dom": "npm:^18.3.5"
     autoprefixer: "npm:^10.4.20"
@@ -923,6 +905,7 @@ __metadata:
     tailwindcss: "npm:^3.4.17"
     typescript: "npm:^5.9.2"
     vite: "npm:^6.0.7"
+    vite-tsconfig-paths: "npm:^5.1.4"
     zod: "npm:^4.1.8"
     zustand: "npm:^5.0.2"
   languageName: unknown
@@ -1319,6 +1302,25 @@ __metadata:
   version: 5.87.4
   resolution: "@tanstack/query-core@npm:5.87.4"
   checksum: 10c0/00898c96d199ba8f0cd2004b76da8e5e3355b97473a6c16dd13de65f5063c4f2abfae64e9f32fc395557c2f446af09e1646a82f62992256fdda6062c9399c2a3
+  languageName: node
+  linkType: hard
+
+"@tanstack/query-devtools@npm:5.87.3":
+  version: 5.87.3
+  resolution: "@tanstack/query-devtools@npm:5.87.3"
+  checksum: 10c0/2e2e22e3866cd1cae5fa63362dd745965a6a73cc74397eb5ad44eb6e3066061776f7fe01b49e61a95117213e65f7d0d14aa6c55a665dda79b7a8c7c7aa2c56f5
+  languageName: node
+  linkType: hard
+
+"@tanstack/react-query-devtools@npm:^5.87.4":
+  version: 5.87.4
+  resolution: "@tanstack/react-query-devtools@npm:5.87.4"
+  dependencies:
+    "@tanstack/query-devtools": "npm:5.87.3"
+  peerDependencies:
+    "@tanstack/react-query": ^5.87.4
+    react: ^18 || ^19
+  checksum: 10c0/86799e009e459fc8ae9fd29ee01d9f167a0bfae4b1dec30581c0bba005728604bcb3b6121d1b41417542bb57ce791d99cfea1dd394b1fd3548b864d2240270b1
   languageName: node
   linkType: hard
 
@@ -3712,9 +3714,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mcp-funnel@workspace:.":
+"mcp-funnel-monorepo@workspace:.":
   version: 0.0.0-use.local
-  resolution: "mcp-funnel@workspace:."
+  resolution: "mcp-funnel-monorepo@workspace:."
   dependencies:
     "@eslint/js": "npm:^9.35.0"
     "@hono/zod-validator": "npm:^0.7.2"
@@ -3730,6 +3732,24 @@ __metadata:
     tsx: "npm:^4.20.5"
     typescript: "npm:^5.9.2"
     typescript-eslint: "npm:^8.43.0"
+    vite-tsconfig-paths: "npm:^5.1.4"
+    vitest: "npm:^3.2.4"
+    zod: "npm:^4.1.8"
+  languageName: unknown
+  linkType: soft
+
+"mcp-funnel@workspace:packages/mcp":
+  version: 0.0.0-use.local
+  resolution: "mcp-funnel@workspace:packages/mcp"
+  dependencies:
+    "@anthropic-ai/claude-code": "npm:^1.0.112"
+    "@hono/zod-validator": "npm:^0.7.2"
+    "@modelcontextprotocol/sdk": "npm:^1.18.0"
+    "@types/node": "npm:^24.3.1"
+    esbuild: "npm:^0.25.9"
+    globby: "npm:^14.1.0"
+    tsx: "npm:^4.20.5"
+    typescript: "npm:^5.9.2"
     vite-tsconfig-paths: "npm:^5.1.4"
     vitest: "npm:^3.2.4"
     zod: "npm:^4.1.8"
