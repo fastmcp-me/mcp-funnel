@@ -461,6 +461,16 @@ export class MCPProxy {
     logEvent('info', 'server:connect_summary', { summary });
   }
 
+  private isAlwaysVisible(serverName: string, toolName: string): boolean {
+    if (!this._config.alwaysVisibleTools) {
+      return false;
+    }
+    const fullToolName = `${serverName}__${toolName}`;
+    return this._config.alwaysVisibleTools.some((pattern) =>
+      matchesPattern(fullToolName, pattern),
+    );
+  }
+
   private shouldExposeTool(serverName: string, toolName: string): boolean {
     // Create the full tool name with server prefix
     const fullToolName = `${serverName}__${toolName}`;
@@ -521,12 +531,22 @@ export class MCPProxy {
               originalName: tool.name,
             });
 
-            // If dynamic discovery is enabled, check if tool was dynamically enabled
-            if (this._config.enableDynamicDiscovery) {
+            // Check if tool is always visible (bypasses all discovery logic)
+            const isAlwaysVisible = this.isAlwaysVisible(serverName, tool.name);
+
+            // Check if tool should be exposed based on configuration
+            const shouldExposeByConfig = this.shouldExposeTool(
+              serverName,
+              tool.name,
+            );
+
+            // If dynamic discovery is enabled AND tool is not always visible
+            if (this._config.enableDynamicDiscovery && !isAlwaysVisible) {
+              // Only show if dynamically enabled
               if (!this._dynamicallyEnabledTools.has(fullToolName)) {
                 continue; // Skip tools not yet enabled
               }
-              // Tool was dynamically enabled, add it to the list
+              // Tool was dynamically enabled, add it
               allTools.push({
                 ...tool,
                 name: fullToolName,
@@ -535,8 +555,10 @@ export class MCPProxy {
               continue;
             }
 
-            // Check filtering against both the original tool name and the prefixed name
-            if (this.shouldExposeTool(serverName, tool.name)) {
+            // Tool is either:
+            // 1. Always visible (alwaysVisibleTools)
+            // 2. Exposed by config when NOT in dynamic discovery mode (exposeTools/hideTools)
+            if (isAlwaysVisible || shouldExposeByConfig) {
               allTools.push({
                 ...tool,
                 name: fullToolName,

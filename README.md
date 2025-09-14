@@ -110,6 +110,7 @@ Create a `.mcp-funnel.json` file in your project directory:
   - `command`: Command to execute
   - `args`: Command arguments (optional)
   - `env`: Environment variables (optional)
+- **alwaysVisibleTools**: Patterns for tools that are always exposed, bypassing discovery mode (optional)
 - **exposeTools**: Include patterns for external tools to expose (optional)
 - **hideTools**: Exclude patterns for external tools to hide (optional)
 - **exposeCoreTools**: Include patterns for internal MCP Funnel tools (optional, defaults to all enabled)
@@ -253,6 +254,29 @@ yarn lint           # Run ESLint
 yarn typecheck      # Run TypeScript type checking
 yarn format         # Auto-format code with Prettier
 ```
+
+## 🎮 Tool Visibility Control
+
+MCP Funnel provides a three-tier visibility system for managing which tools are exposed:
+
+### 1. Always Visible Tools (`alwaysVisibleTools`)
+Tools matching these patterns are **always exposed from startup**, even when using dynamic discovery mode. Perfect for critical tools you always want available.
+
+```json
+{
+  "alwaysVisibleTools": [
+    "github__create_pull_request",  // Always show this specific tool
+    "memory__store_*"               // Always show all store operations
+  ],
+  "enableDynamicDiscovery": true    // Other tools hidden until discovered
+}
+```
+
+### 2. Discoverable Tools (`exposeTools`)
+When `enableDynamicDiscovery: true`, these tools are hidden initially but can be discovered and enabled dynamically. When discovery is disabled, they're visible from startup.
+
+### 3. Hidden Tools (`hideTools`)
+Tools matching these patterns are never exposed, regardless of other settings.
 
 ## 🚀 Hacky Discovery Mode (Ultra-Low Context)
 
