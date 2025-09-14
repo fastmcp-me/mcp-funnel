@@ -866,9 +866,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mcp-funnel/command-ts-validate@workspace:packages/commands/validate":
+"@mcp-funnel/command-ts-validate@workspace:packages/commands/ts-validate":
   version: 0.0.0-use.local
-  resolution: "@mcp-funnel/command-ts-validate@workspace:packages/commands/validate"
+  resolution: "@mcp-funnel/command-ts-validate@workspace:packages/commands/ts-validate"
   dependencies:
     "@mcp-funnel/commands-core": "workspace:^"
     "@modelcontextprotocol/sdk": "npm:^1.18.0"

@@ -213,7 +213,7 @@ packages/mcp/src/cli.ts:
 ### Building
 
 ```bash
-cd packages/commands/validate
+cd packages/commands/ts-validate
 yarn build
 ```
 
@@ -221,7 +221,7 @@ yarn build
 
 ```bash
 # Run validation on the command itself
-npx mcp-funnel run validate packages/commands/validate
+npx mcp-funnel run ts-validate packages/commands/ts-validate
 ```
 
 ## Configuration
