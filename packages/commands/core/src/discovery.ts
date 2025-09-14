@@ -70,6 +70,30 @@ async function loadCommand(commandPath: string): Promise<ICommand | null> {
       return null;
     }
 
+    // Prefer src in development or when explicitly requested via env flag
+    const preferSrc =
+      process.env.NODE_ENV !== 'production' ||
+      process.env.MCP_FUNNEL_PREFER_SRC === '1';
+
+    if (preferSrc) {
+      const srcIndexPath = join(commandPath, 'src', 'index.ts');
+      try {
+        await fs.access(srcIndexPath);
+        const module = await import(srcIndexPath);
+        const command =
+          module.default ||
+          module.command ||
+          findCommandInModule(module as unknown);
+
+        if (isValidCommand(command)) {
+          return command as ICommand;
+        }
+        // fall through to dist if src did not export a valid command
+      } catch {
+        // fall through to dist if src path not accessible
+      }
+    }
+
     // Try to import from the specified entry point
     const modulePath = join(commandPath, entryPoint);
 

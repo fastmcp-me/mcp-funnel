@@ -279,86 +279,28 @@ export class MonorepoValidator {
       (f) => f.endsWith('.ts') || f.endsWith('.tsx'),
     );
 
+    if (tsFiles.length === 0) {
+      return;
+    }
+
     // Group files by their nearest tsconfig.json
     const filesByConfig = new Map<string, string[]>();
 
     for (const file of tsFiles) {
       const configPath = this.findNearestTsConfig(file);
       if (!configPath) {
-        console.warn(
-          chalk.yellow(`No tsconfig.json found for ${file}, skipping`),
-        );
+        // No tsconfig found for this file; skip to avoid misconfiguration
         continue;
       }
-
-      if (!filesByConfig.has(configPath)) {
-        filesByConfig.set(configPath, []);
-      }
-      filesByConfig.get(configPath)?.push(file);
+      const list = filesByConfig.get(configPath) ?? [];
+      list.push(file);
+      filesByConfig.set(configPath, list);
     }
-
-    // If no TypeScript files or no configs found, also check if we're in a monorepo
-    // and should validate all packages
-    if (filesByConfig.size === 0 && tsFiles.length === 0) {
-      // Check for composite project at root
-      const rootConfig = ts.findConfigFile(
-        process.cwd(),
-        ts.sys.fileExists,
-        'tsconfig.json',
-      );
-
-      if (rootConfig) {
-        const { config } = ts.readConfigFile(rootConfig, ts.sys.readFile);
-
-        // If composite project, validate each referenced project
-        if (config.references && config.references.length > 0) {
-          for (const ref of config.references) {
-            const refPath = path.resolve(
-              path.dirname(rootConfig),
-              ref.path,
-              'tsconfig.json',
-            );
-            if (ts.sys.fileExists(refPath)) {
-              const refConfig = ts.readConfigFile(refPath, ts.sys.readFile);
-              const refParsed = ts.parseJsonConfigFileContent(
-                refConfig.config,
-                ts.sys,
-                path.dirname(refPath),
-              );
-
-              const refTsFiles = refParsed.fileNames.filter(
-                (f) => f.endsWith('.ts') || f.endsWith('.tsx'),
-              );
-
-              if (refTsFiles.length > 0) {
-                filesByConfig.set(refPath, refTsFiles);
-              }
-            }
-          }
-        } else {
-          // Single project - get all its files
-          const parsed = ts.parseJsonConfigFileContent(
-            config,
-            ts.sys,
-            path.dirname(rootConfig),
-          );
-
-          const projectTsFiles = parsed.fileNames.filter(
-            (f) => f.endsWith('.ts') || f.endsWith('.tsx'),
-          );
-
-          if (projectTsFiles.length > 0) {
-            filesByConfig.set(rootConfig, projectTsFiles);
-          }
-        }
-      }
-    }
-
-    // Now validate each group of files with their appropriate tsconfig
-    for (const [configPath, configFiles] of filesByConfig) {
+    // Validate each group using the TypeScript programmatic API so tsconfig paths/baseUrl apply
+    for (const [configPath, configFiles] of filesByConfig.entries()) {
       const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
 
-      // Parse the config to get all project files and options
+      // Parse the config for this project
       const parsed = ts.parseJsonConfigFileContent(
         config,
         ts.sys,
@@ -377,14 +319,12 @@ export class MonorepoValidator {
         continue;
       }
 
-      // Create program with all files from this config
-      // This ensures proper module resolution within the package
+      // Create a program for the entire project, but collect diagnostics only for files we care about
       const program = ts.createProgram({
         rootNames: parsed.fileNames,
         options: { ...parsed.options, noEmit: true },
       });
 
-      // Get diagnostics only for files in our validation scope
       const filesToValidate = new Set(configFiles);
       const sourceFiles = program
         .getSourceFiles()
@@ -413,7 +353,6 @@ export class MonorepoValidator {
             '\n',
           );
 
-          // Check if there's a suggested fix
           const suggestedFix = this.getTypeScriptFix(diagnostic);
 
           const isError = diagnostic.category === ts.DiagnosticCategory.Error;
