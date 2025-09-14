@@ -866,6 +866,54 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@mcp-funnel/command-npm-lookup@workspace:packages/commands/npm-lookup":
+  version: 0.0.0-use.local
+  resolution: "@mcp-funnel/command-npm-lookup@workspace:packages/commands/npm-lookup"
+  dependencies:
+    "@mcp-funnel/commands-core": "workspace:^"
+    "@modelcontextprotocol/sdk": "npm:^1.18.0"
+    "@types/node": "npm:^24.3.1"
+    esbuild: "npm:^0.25.9"
+    mcp-funnel: "workspace:^"
+    tsx: "npm:^4.20.5"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
+"@mcp-funnel/command-ts-validate@workspace:packages/commands/ts-validate":
+  version: 0.0.0-use.local
+  resolution: "@mcp-funnel/command-ts-validate@workspace:packages/commands/ts-validate"
+  dependencies:
+    "@mcp-funnel/commands-core": "workspace:^"
+    "@modelcontextprotocol/sdk": "npm:^1.18.0"
+    "@types/node": "npm:^24.3.1"
+    "@types/semver": "npm:^7.7.1"
+    chalk: "npm:^5.3.0"
+    esbuild: "npm:^0.25.9"
+    eslint: "npm:^9.10.0"
+    globby: "npm:^14.0.0"
+    prettier: "npm:^3.1.0"
+    semver: "npm:^7.6.3"
+    tsx: "npm:^4.20.5"
+    typescript: "npm:^5.9.2"
+    vitest: "npm:^3.2.4"
+  languageName: unknown
+  linkType: soft
+
+"@mcp-funnel/commands-core@workspace:*, @mcp-funnel/commands-core@workspace:^, @mcp-funnel/commands-core@workspace:packages/commands/core":
+  version: 0.0.0-use.local
+  resolution: "@mcp-funnel/commands-core@workspace:packages/commands/core"
+  dependencies:
+    "@modelcontextprotocol/sdk": "npm:^1.18.0"
+    "@types/node": "npm:^24.3.1"
+    esbuild: "npm:^0.25.9"
+    tsx: "npm:^4.20.5"
+    typescript: "npm:^5.9.2"
+    vitest: "npm:^3.2.4"
+    zod: "npm:^4.1.8"
+  languageName: unknown
+  linkType: soft
+
 "@mcp-funnel/server@workspace:packages/server":
   version: 0.0.0-use.local
   resolution: "@mcp-funnel/server@workspace:packages/server"
@@ -876,8 +924,10 @@ __metadata:
     "@types/ws": "npm:^8.18.1"
     esbuild: "npm:^0.25.9"
     hono: "npm:^4.9.7"
+    mcp-funnel: "workspace:*"
     tsx: "npm:^4.20.5"
     typescript: "npm:^5.9.2"
+    vitest: "npm:^3.2.4"
     ws: "npm:^8.18.3"
     zod: "npm:^4.1.8"
   languageName: unknown
@@ -887,19 +937,20 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@mcp-funnel/web@workspace:packages/web"
   dependencies:
-    "@react-router/dev": "npm:^7.0.2"
-    "@react-router/node": "npm:^7.0.2"
-    "@react-router/serve": "npm:^7.0.2"
+    "@react-router/dev": "npm:^7.9.1"
+    "@react-router/node": "npm:^7.9.1"
+    "@react-router/serve": "npm:^7.9.1"
     "@tanstack/react-query": "npm:^5.63.0"
     "@tanstack/react-query-devtools": "npm:^5.87.4"
     "@types/react": "npm:^18.3.17"
     "@types/react-dom": "npm:^18.3.5"
     autoprefixer: "npm:^10.4.20"
     clsx: "npm:^2.1.1"
+    isbot: "npm:^5.0.0"
     postcss: "npm:^8.4.49"
     react: "npm:^18.3.1"
     react-dom: "npm:^18.3.1"
-    react-router: "npm:^7.0.2"
+    react-router: "npm:^7.9.1"
     tailwind-merge: "npm:^2.6.0"
     tailwindcss: "npm:^3.4.17"
     typescript: "npm:^5.9.2"
@@ -1040,7 +1091,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-router/dev@npm:^7.0.2":
+"@react-router/dev@npm:^7.9.1":
   version: 7.9.1
   resolution: "@react-router/dev@npm:7.9.1"
   dependencies:
@@ -1109,7 +1160,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-router/node@npm:7.9.1, @react-router/node@npm:^7.0.2":
+"@react-router/node@npm:7.9.1, @react-router/node@npm:^7.9.1":
   version: 7.9.1
   resolution: "@react-router/node@npm:7.9.1"
   dependencies:
@@ -1124,7 +1175,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-router/serve@npm:^7.0.2":
+"@react-router/serve@npm:^7.9.1":
   version: 7.9.1
   resolution: "@react-router/serve@npm:7.9.1"
   dependencies:
@@ -1405,6 +1456,13 @@ __metadata:
     "@types/prop-types": "npm:*"
     csstype: "npm:^3.0.2"
   checksum: 10c0/9e188fa8e50f172cf647fc48fea2e04d88602afff47190b697de281a8ac88df9ee059864757a2a438ff599eaf9276d9a9e0e60585e88f7d57f01a2e4877d37ec
+  languageName: node
+  linkType: hard
+
+"@types/semver@npm:^7.7.1":
+  version: 7.7.1
+  resolution: "@types/semver@npm:7.7.1"
+  checksum: 10c0/c938aef3bf79a73f0f3f6037c16e2e759ff40c54122ddf0b2583703393d8d3127130823facb880e694caa324eb6845628186aac1997ee8b31dc2d18fafe26268
   languageName: node
   linkType: hard
 
@@ -2078,6 +2136,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"chalk@npm:^5.3.0":
+  version: 5.6.2
+  resolution: "chalk@npm:5.6.2"
+  checksum: 10c0/99a4b0f0e7991796b1e7e3f52dceb9137cae2a9dfc8fc0784a550dc4c558e15ab32ed70b14b21b52beb2679b4892b41a0aa44249bcb996f01e125d58477c6976
+  languageName: node
+  linkType: hard
+
 "check-error@npm:^2.1.1":
   version: 2.1.1
   resolution: "check-error@npm:2.1.1"
@@ -2329,6 +2394,13 @@ __metadata:
   version: 0.1.4
   resolution: "deep-is@npm:0.1.4"
   checksum: 10c0/7f0ee496e0dff14a573dc6127f14c95061b448b87b995fc96c017ce0a1e66af1675e73f1d6064407975bc4ea6ab679497a29fff7b5b9c4e99cb10797c1ad0b4c
+  languageName: node
+  linkType: hard
+
+"deepmerge-ts@npm:^7.0.5":
+  version: 7.1.5
+  resolution: "deepmerge-ts@npm:7.1.5"
+  checksum: 10c0/3a265a2086f334e3ecf43a7d4138c950cb99e0b39e816fa7fd7f5326161364e51b13010906908212667619066f5b48de738ed42543212323fbbb5d4ed7ebdc84
   languageName: node
   linkType: hard
 
@@ -2607,7 +2679,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:^9.35.0":
+"eslint@npm:^9.10.0, eslint@npm:^9.35.0":
   version: 9.35.0
   resolution: "eslint@npm:9.35.0"
   dependencies:
@@ -3137,7 +3209,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"globby@npm:^14.1.0":
+"globby@npm:^14.0.0, globby@npm:^14.1.0":
   version: 14.1.0
   resolution: "globby@npm:14.1.0"
   dependencies:
@@ -3399,7 +3471,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"isbot@npm:^5.1.11":
+"isbot@npm:^5.0.0, isbot@npm:^5.1.11":
   version: 5.1.30
   resolution: "isbot@npm:5.1.30"
   checksum: 10c0/00a34842c0573669830ef17fc8b0ce8e3a947835179c13e10da737899310b33d1644fbab8042a8963d581010cce6ae46cd6ee947bd5e79465e29b9cbead44113
@@ -3713,27 +3785,44 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mcp-funnel@workspace:.":
+"mcp-funnel-monorepo@workspace:.":
   version: 0.0.0-use.local
-  resolution: "mcp-funnel@workspace:."
+  resolution: "mcp-funnel-monorepo@workspace:."
   dependencies:
-    "@anthropic-ai/claude-code": "npm:^1.0.112"
     "@eslint/js": "npm:^9.35.0"
     "@hono/zod-validator": "npm:^0.7.2"
     "@modelcontextprotocol/sdk": "npm:^1.18.0"
-    "@tanstack/react-query-devtools": "npm:^5.87.4"
     "@types/node": "npm:^24.3.1"
     "@typescript-eslint/eslint-plugin": "npm:^8.43.0"
     "@typescript-eslint/parser": "npm:^8.43.0"
     "@vitest/coverage-v8": "npm:^3.2.4"
     "@vitest/ui": "npm:^3.2.4"
-    esbuild: "npm:^0.25.9"
     eslint: "npm:^9.35.0"
     globby: "npm:^14.1.0"
     prettier: "npm:^3.6.2"
     tsx: "npm:^4.20.5"
     typescript: "npm:^5.9.2"
     typescript-eslint: "npm:^8.43.0"
+    vite-tsconfig-paths: "npm:^5.1.4"
+    vitest: "npm:^3.2.4"
+    zod: "npm:^4.1.8"
+  languageName: unknown
+  linkType: soft
+
+"mcp-funnel@workspace:*, mcp-funnel@workspace:^, mcp-funnel@workspace:packages/mcp":
+  version: 0.0.0-use.local
+  resolution: "mcp-funnel@workspace:packages/mcp"
+  dependencies:
+    "@anthropic-ai/claude-code": "npm:^1.0.112"
+    "@hono/zod-validator": "npm:^0.7.2"
+    "@mcp-funnel/commands-core": "workspace:*"
+    "@modelcontextprotocol/sdk": "npm:^1.18.0"
+    "@types/node": "npm:^24.3.1"
+    deepmerge-ts: "npm:^7.0.5"
+    esbuild: "npm:^0.25.9"
+    globby: "npm:^14.1.0"
+    tsx: "npm:^4.20.5"
+    typescript: "npm:^5.9.2"
     vite-tsconfig-paths: "npm:^5.1.4"
     vitest: "npm:^3.2.4"
     zod: "npm:^4.1.8"
@@ -4444,7 +4533,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier@npm:^3.6.2":
+"prettier@npm:^3.1.0, prettier@npm:^3.6.2":
   version: 3.6.2
   resolution: "prettier@npm:3.6.2"
   bin:
@@ -4576,7 +4665,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-router@npm:^7.0.2":
+"react-router@npm:^7.9.1":
   version: 7.9.1
   resolution: "react-router@npm:7.9.1"
   dependencies:
@@ -4819,7 +4908,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.1.1, semver@npm:^7.3.5, semver@npm:^7.3.7, semver@npm:^7.5.3, semver@npm:^7.6.0":
+"semver@npm:^7.1.1, semver@npm:^7.3.5, semver@npm:^7.3.7, semver@npm:^7.5.3, semver@npm:^7.6.0, semver@npm:^7.6.3":
   version: 7.7.2
   resolution: "semver@npm:7.7.2"
   bin:

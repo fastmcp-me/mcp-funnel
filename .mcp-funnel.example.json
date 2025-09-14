@@ -58,6 +58,12 @@
     "memory__debug_*",
     "memory__dashboard_*"
   ],
+  // Built-in CLI commands exposed via MCP
+  "commands": {
+    "enabled": true,
+    "list": ["ts-validate", "npm"]
+  },
   "exposeTools": null,
+  "exposeCoreTools": ["discover_*", "load_toolset"],
   "enableDynamicDiscovery": false
 }

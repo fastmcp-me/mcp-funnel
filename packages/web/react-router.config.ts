@@ -3,9 +3,5 @@ import type { Config } from '@react-router/dev/config';
 export default {
   appDirectory: 'app',
   ssr: false, // SPA mode
-  future: {
-    v3_fetcherPersist: true,
-    v3_relativeSplatPath: true,
-    v3_throwAbortReason: true,
-  },
+  // React Router v7 doesn't use future flags in the same way
 } satisfies Config;

@@ -1,7 +1,7 @@
 {
-  "name": "mcp-funnel",
-  "version": "0.0.2",
-  "description": "MCP proxy that aggregates multiple servers with tool filtering - stop carrying 70k tokens of tools you'll never use",
+  "name": "mcp-funnel-monorepo",
+  "version": "0.0.4",
+  "private": true,
   "author": "Christoph Schramm",
   "license": "MIT",
   "repository": {
@@ -11,59 +11,31 @@
   "workspaces": [
     "packages/**/*"
   ],
-  "keywords": [
-    "mcp",
-    "model-context-protocol",
-    "claude",
-    "proxy",
-    "aggregator",
-    "filter"
-  ],
   "type": "module",
-  "bin": "./dist/cli.js",
-  "main": "./dist/cjs/index.cjs",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/types/mcp-funnel.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/types/mcp-funnel.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.cjs"
-    }
-  },
-  "files": [
-    "dist/",
-    "!dist/**/*.map"
-  ],
   "scripts": {
-    "dev": "tsx src/mcp-funnel.ts",
-    "build": "tsx build.ts",
-    "build:watch": "tsx build.ts --watch",
+    "build": "yarn workspaces foreach -v --topological-dev -p -A run build",
     "prettier": "prettier -c \"**/*.{ts,tsx,js,json,md}\"",
     "lint": "eslint --ext .ts,.tsx",
-    "validate": "tsx scripts/validate.ts --fix",
+    "validate": "tsx packages/mcp/src/cli.ts run ts-validate --fix",
     "test": "vitest run",
     "test:e2e": "TEST_E2E=true vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "release": "yarn npm audit && npm publish --access public"
+    "dev:npm-lookup": "tsx packages/mcp/src/cli.ts run npm lookup \"vitest\""
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",
     "zod": "^4.1.8"
   },
   "devDependencies": {
-    "@anthropic-ai/claude-code": "^1.0.112",
     "@eslint/js": "^9.35.0",
     "@hono/zod-validator": "^0.7.2",
-    "@tanstack/react-query-devtools": "^5.87.4",
     "@types/node": "^24.3.1",
     "@typescript-eslint/eslint-plugin": "^8.43.0",
     "@typescript-eslint/parser": "^8.43.0",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
-    "esbuild": "^0.25.9",
     "eslint": "^9.35.0",
     "globby": "^14.1.0",
     "prettier": "^3.6.2",

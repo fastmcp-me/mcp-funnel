@@ -3,15 +3,26 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '~/lib/api';
 import { cn } from '~/lib/cn';
 
+interface Tool {
+  name: string;
+  serverName: string;
+  description?: string;
+  enabled: boolean;
+}
+
+interface ToolsResponse {
+  tools: Tool[];
+}
+
 export function ToolExplorer() {
   const [search, setSearch] = useState('');
-  const [selectedTool, setSelectedTool] = useState<any>(null);
+  const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['tools', search],
-    queryFn: () => search ? api.tools.search(search) : api.tools.list(),
-    keepPreviousData: true,
+    queryFn: () => (search ? api.tools.search(search) : api.tools.list()),
+    placeholderData: (previousData) => previousData,
   });
 
   // Refetch on WebSocket events
@@ -31,8 +42,13 @@ export function ToolExplorer() {
   });
 
   const executeMutation = useMutation({
-    mutationFn: ({ name, args }: { name: string; args?: any }) =>
-      api.tools.execute(name, args),
+    mutationFn: ({
+      name,
+      args,
+    }: {
+      name: string;
+      args?: Record<string, unknown>;
+    }) => api.tools.execute(name, args),
   });
 
   return (
@@ -55,14 +71,14 @@ export function ToolExplorer() {
         </div>
       ) : (
         <div className="space-y-2 max-h-[500px] overflow-y-auto">
-          {data?.tools?.map((tool: any) => (
+          {(data as ToolsResponse | undefined)?.tools?.map((tool) => (
             <div
               key={tool.name}
               className={cn(
                 'p-3 rounded-lg border cursor-pointer transition-colors',
                 selectedTool?.name === tool.name
                   ? 'bg-accent border-primary'
-                  : 'hover:bg-secondary'
+                  : 'hover:bg-secondary',
               )}
               onClick={() => setSelectedTool(tool)}
             >
@@ -87,7 +103,7 @@ export function ToolExplorer() {
                     'text-xs px-2 py-1 rounded transition-colors',
                     tool.enabled
                       ? 'bg-green-500/20 text-green-700 hover:bg-green-500/30'
-                      : 'bg-muted hover:bg-muted/80'
+                      : 'bg-muted hover:bg-muted/80',
                   )}
                 >
                   {tool.enabled ? 'Enabled' : 'Disabled'}
@@ -107,7 +123,7 @@ export function ToolExplorer() {
                     <button
                       onClick={() => {
                         const textarea = document.getElementById(
-                          `args-${tool.name}`
+                          `args-${tool.name}`,
                         ) as HTMLTextAreaElement;
                         let args = {};
                         if (textarea.value) {

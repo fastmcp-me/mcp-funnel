@@ -59,7 +59,7 @@ export default function Index() {
             <ToolExplorer />
           </div>
         </div>
-        
+
         <div className="mt-8">
           <LogViewer />
         </div>

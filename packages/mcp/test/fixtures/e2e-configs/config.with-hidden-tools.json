@@ -1,0 +1,10 @@
+{
+  "servers": [
+    {
+      "name": "mockserver",
+      "command": "tsx",
+      "args": ["../../e2e/mock-server-runner.ts", "test"]
+    }
+  ],
+  "hideTools": ["mockserver__hidden_tool", "mockserver__*_issue"]
+}

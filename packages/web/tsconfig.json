@@ -1,6 +1,8 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "composite": true,
+    "rootDir": "./",
+    "outDir": "./dist",
     "jsx": "react-jsx",
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "target": "ES2022",
@@ -18,8 +20,10 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "~/*": ["./app/*"]
-    }
+      "~/*": ["./app/*"],
+      "mcp-funnel": ["../mcp/src/index.ts"]
+    },
+    "rootDirs": [".", "./.react-router/types"]
   },
   "include": [
     "**/*.ts",
@@ -27,7 +31,8 @@
     "**/.server/**/*.ts",
     "**/.server/**/*.tsx",
     "**/.client/**/*.ts",
-    "**/.client/**/*.tsx"
+    "**/.client/**/*.tsx",
+    ".react-router/types/**/*"
   ],
   "exclude": ["node_modules", "dist", "build", "public/build"]
 }

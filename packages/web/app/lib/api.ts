@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 const API_BASE = '/api';
 
 export const api = {
@@ -9,7 +7,7 @@ export const api = {
       if (!res.ok) throw new Error('Failed to fetch servers');
       return res.json();
     },
-    
+
     reconnect: async (name: string) => {
       const res = await fetch(`${API_BASE}/servers/${name}/reconnect`, {
         method: 'POST',
@@ -17,7 +15,7 @@ export const api = {
       if (!res.ok) throw new Error('Failed to reconnect server');
       return res.json();
     },
-    
+
     disconnect: async (name: string) => {
       const res = await fetch(`${API_BASE}/servers/${name}`, {
         method: 'DELETE',
@@ -33,14 +31,16 @@ export const api = {
       if (!res.ok) throw new Error('Failed to fetch tools');
       return res.json();
     },
-    
+
     search: async (query: string) => {
-      const res = await fetch(`${API_BASE}/tools/search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(
+        `${API_BASE}/tools/search?q=${encodeURIComponent(query)}`,
+      );
       if (!res.ok) throw new Error('Failed to search tools');
       return res.json();
     },
-    
-    execute: async (name: string, args?: Record<string, any>) => {
+
+    execute: async (name: string, args?: Record<string, unknown>) => {
       const res = await fetch(`${API_BASE}/tools/${name}/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,7 +49,7 @@ export const api = {
       if (!res.ok) throw new Error('Failed to execute tool');
       return res.json();
     },
-    
+
     toggle: async (name: string) => {
       const res = await fetch(`${API_BASE}/tools/${name}/toggle`, {
         method: 'PATCH',
@@ -65,8 +65,8 @@ export const api = {
       if (!res.ok) throw new Error('Failed to fetch config');
       return res.json();
     },
-    
-    update: async (updates: any) => {
+
+    update: async (updates: Record<string, unknown>) => {
       const res = await fetch(`${API_BASE}/config`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

@@ -1,0 +1,12 @@
+{
+  "servers": [
+    {
+      "name": "mockserver",
+      "command": "tsx",
+      "args": ["../../e2e/mock-server-runner.ts", "test"]
+    }
+  ],
+  "alwaysVisibleTools": ["mockserver__super_tool", "mockserver__critical_*"],
+  "exposeTools": ["mockserver__*"],
+  "enableDynamicDiscovery": true
+}

@@ -58,17 +58,21 @@ MCP Funnel supports two ways to specify configuration:
    ```
 
 2. **Explicit**: Specify a custom config file path
+
    ```bash
    npx mcp-funnel /path/to/config.json
    ```
+
+3. **User Base Config (merged automatically)**
+
+   If present, `~/.mcp-funnel/.mcp-funnel.json` is merged with the project config. Project values override user base values. Arrays are replaced (no concatenation).
 
 Create a `.mcp-funnel.json` file in your project directory:
 
 ```json
 {
-  "servers": [
-    {
-      "name": "github",
+  "servers": {
+    "github": {
       "command": "docker",
       "args": [
         "run",
@@ -79,13 +83,11 @@ Create a `.mcp-funnel.json` file in your project directory:
         "ghcr.io/github/github-mcp-server"
       ]
     },
-    {
-      "name": "memory",
+    "memory": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"]
     },
-    {
-      "name": "filesystem",
+    "filesystem": {
       "command": "npx",
       "args": [
         "-y",
@@ -93,7 +95,7 @@ Create a `.mcp-funnel.json` file in your project directory:
         "/path/to/allowed/directory"
       ]
     }
-  ],
+  },
   "hideTools": [
     "github__list_workflow_runs",
     "github__get_workflow_run_logs",
@@ -108,13 +110,15 @@ Create a `.mcp-funnel.json` file in your project directory:
 
 ### Configuration Options
 
-- **servers**: Array of MCP servers to connect to
-  - `name`: Unique identifier (used as tool prefix)
+- **servers**: Record of MCP servers to connect to (server name as key)
+  - Key: Server name (used as tool prefix)
   - `command`: Command to execute
   - `args`: Command arguments (optional)
   - `env`: Environment variables (optional)
-- **exposeTools**: Whitelist patterns for tools to expose (optional)
-- **hideTools**: Blacklist patterns for tools to hide (optional)
+- **alwaysVisibleTools**: Patterns for tools that are always exposed, bypassing discovery mode (optional)
+- **exposeTools**: Include patterns for external tools to expose (optional)
+- **hideTools**: Exclude patterns for external tools to hide (optional)
+- **exposeCoreTools**: Include patterns for internal MCP Funnel tools (optional, defaults to all enabled)
 - **enableDynamicDiscovery**: Enable experimental dynamic tool discovery (default: false)
 - **hackyDiscovery**: Enable minimal context mode with dynamic tool bridging (default: false)
 
@@ -149,6 +153,81 @@ Patterns match against the prefixed tool names (`serverName__toolName`) and supp
 ```
 
 **Note:** Always use the server prefix (e.g., `github__`, `memory__`) to target specific servers' tools. Use `*__` at the beginning to match tools from any server.
+
+### Core Tool Filtering
+
+MCP Funnel includes internal tools for discovery and bridging. Control which core tools are exposed using `exposeCoreTools`:
+
+```json
+"exposeCoreTools": ["discover_*", "load_toolset"]  // Only expose discovery tools and toolset loading
+```
+
+Available core tools:
+
+- `discover_tools_by_words` - Search for tools by keywords
+- `get_tool_schema` - Get input schema for tools
+- `bridge_tool_request` - Execute tools dynamically
+- `load_toolset` - Load predefined tool patterns
+
+If `exposeCoreTools` is not specified, all core tools are enabled by default.
+
+## 📦 Built-in Commands
+
+MCP Funnel includes several built-in commands that provide useful functionality:
+
+### NPM Command
+
+The NPM command provides package lookup and search capabilities using the NPM registry API.
+
+**Tools exposed:**
+- `npm_lookup` - Get detailed information about a specific NPM package
+- `npm_search` - Search for packages matching a query
+
+**Configuration:**
+```json
+{
+  "commands": {
+    "enabled": true,
+    "list": ["npm"]
+  },
+  "exposeTools": [
+    "development-commands__npm_lookup",
+    "development-commands__npm_search"
+  ]
+}
+```
+
+**Example usage:**
+```bash
+# CLI usage
+npx mcp-funnel run npm lookup express
+npx mcp-funnel run npm search "test framework"
+
+# MCP usage (via Claude or other clients)
+# "Look up the express package for me"
+# "Search for TypeScript testing frameworks"
+```
+
+**Features:**
+- Comprehensive package metadata including dependencies and statistics
+- Smart search with relevance scoring
+- Built-in caching (5 minutes) for improved performance
+- Error handling for missing packages and network issues
+
+For detailed documentation, see [NPM Command README](packages/commands/npm-lookup/README.md).
+
+### Multi-Tool Commands
+
+Commands can expose multiple tools, as demonstrated by the NPM command. This pattern allows:
+
+- **Logical grouping**: Related functionality under one command
+- **Shared resources**: Common caching, configuration, and error handling
+- **Flexible filtering**: Enable/disable individual tools within a command
+
+When creating custom commands, consider the multi-tool pattern for:
+- API clients (list, get, create, update operations)
+- File operations (read, write, search, validate)
+- Development tools (lint, test, build, deploy)
 
 ## 🚀 Usage
 
@@ -240,6 +319,32 @@ yarn typecheck      # Run TypeScript type checking
 yarn format         # Auto-format code with Prettier
 ```
 
+## 🎮 Tool Visibility Control
+
+MCP Funnel provides a three-tier visibility system for managing which tools are exposed:
+
+### 1. Always Visible Tools (`alwaysVisibleTools`)
+
+Tools matching these patterns are **always exposed from startup**, even when using dynamic discovery mode. Perfect for critical tools you always want available.
+
+```json
+{
+  "alwaysVisibleTools": [
+    "github__create_pull_request", // Always show this specific tool
+    "memory__store_*" // Always show all store operations
+  ],
+  "enableDynamicDiscovery": true // Other tools hidden until discovered
+}
+```
+
+### 2. Discoverable Tools (`exposeTools`)
+
+When `enableDynamicDiscovery: true`, these tools are hidden initially but can be discovered and enabled dynamically. When discovery is disabled, they're visible from startup.
+
+### 3. Hidden Tools (`hideTools`)
+
+Tools matching these patterns are never exposed, regardless of other settings.
+
 ## 🚀 Hacky Discovery Mode (Ultra-Low Context)
 
 Hacky Discovery is a workaround for Claude Code's lack of dynamic tool updates. When enabled (`hackyDiscovery: true`), MCP Funnel exposes only **3 tools** instead of 100+:
@@ -252,14 +357,13 @@ Hacky Discovery is a workaround for Claude Code's lack of dynamic tool updates. 
 
 ```json
 {
-  "servers": [
-    {
-      "name": "github",
+  "servers": {
+    "github": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-github"],
       "env": { "GITHUB_TOKEN": "your-token" }
     }
-  ],
+  },
   "hackyDiscovery": true
 }
 ```

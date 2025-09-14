@@ -28,7 +28,7 @@ export function LogViewer() {
                   'flex gap-2',
                   log.level === 'error' && 'text-destructive',
                   log.level === 'warn' && 'text-yellow-600',
-                  log.level === 'debug' && 'text-muted-foreground'
+                  log.level === 'debug' && 'text-muted-foreground',
                 )}
               >
                 <span className="text-muted-foreground">
@@ -40,7 +40,7 @@ export function LogViewer() {
                     log.level === 'error' && 'bg-destructive/20',
                     log.level === 'warn' && 'bg-yellow-600/20',
                     log.level === 'info' && 'bg-primary/10',
-                    log.level === 'debug' && 'bg-muted'
+                    log.level === 'debug' && 'bg-muted',
                   )}
                 >
                   {log.level.toUpperCase()}
