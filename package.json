@@ -13,6 +13,7 @@
   ],
   "type": "module",
   "scripts": {
+    "build": "yarn workspaces foreach -v --topological-dev -p -A run build",
     "prettier": "prettier -c \"**/*.{ts,tsx,js,json,md}\"",
     "lint": "eslint --ext .ts,.tsx",
     "validate": "tsx packages/mcp/src/cli.ts run ts-validate --fix",
