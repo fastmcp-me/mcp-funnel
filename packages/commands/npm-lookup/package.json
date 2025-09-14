@@ -1,7 +1,7 @@
 {
-  "name": "@mcp-funnel/command-ts-validate",
+  "name": "@mcp-funnel/command-npm-lookup",
   "version": "0.0.1",
-  "description": "TypeScript validation command for MCP Funnel - runs prettier, eslint, and TypeScript validation",
+  "description": "NPM package lookup command for MCP Funnel - search and retrieve NPM package information",
   "author": "Christoph Schramm",
   "license": "MIT",
   "repository": {
@@ -11,10 +11,10 @@
   "keywords": [
     "mcp",
     "tools",
-    "typescript",
-    "validation",
-    "prettier",
-    "eslint"
+    "npm",
+    "package",
+    "lookup",
+    "search"
   ],
   "type": "module",
   "main": "./dist/index.js",
@@ -38,18 +38,12 @@
   },
   "dependencies": {
     "@mcp-funnel/commands-core": "workspace:^",
-    "@modelcontextprotocol/sdk": "^1.18.0",
-    "chalk": "^5.3.0",
-    "eslint": "^9.10.0",
-    "globby": "^14.0.0",
-    "prettier": "^3.1.0",
-    "semver": "^7.6.3",
-    "typescript": "^5.9.2"
+    "@modelcontextprotocol/sdk": "^1.18.0"
   },
   "devDependencies": {
     "@types/node": "^24.3.1",
-    "@types/semver": "^7.7.1",
     "esbuild": "^0.25.9",
+    "mcp-funnel": "workspace:^",
     "tsx": "^4.20.5",
     "vitest": "^3.2.4"
   },

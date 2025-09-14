@@ -36,9 +36,11 @@ export class CommandRegistry {
    * Get all commands as MCP Tool definitions
    */
   getAllMCPDefinitions(): Tool[] {
-    return Array.from(this.commands.values()).map((command) =>
-      command.getMCPDefinition(),
-    );
+    const allTools: Tool[] = [];
+    for (const command of this.commands.values()) {
+      allTools.push(...command.getMCPDefinitions());
+    }
+    return allTools;
   }
 
   /**

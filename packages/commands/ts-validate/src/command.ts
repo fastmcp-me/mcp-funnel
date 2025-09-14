@@ -7,21 +7,69 @@ export class TsValidateCommand implements ICommand {
   readonly name = 'ts-validate';
   readonly description = 'Run prettier, eslint, and TypeScript validation';
 
+  async executeToolViaMCP(
+    toolName: string,
+    args: Record<string, unknown>,
+  ): Promise<CallToolResult> {
+    // For single-tool commands, delegate to the original implementation
+    return this.executeViaMCP(args);
+  }
+
   async executeViaMCP(args: Record<string, unknown>): Promise<CallToolResult> {
     const validator = new MonorepoValidator();
+    const mcpFiles = ((): string[] | undefined => {
+      if (Array.isArray(args.files)) return args.files as string[];
+      if (Array.isArray((args as any).paths))
+        return (args as any).paths as string[];
+      if (typeof (args as any).dir === 'string')
+        return [String((args as any).dir)];
+      return undefined;
+    })();
     const options: ValidateOptions = {
-      files: args.files as string[] | undefined,
+      files: mcpFiles,
       glob: args.glob as string | undefined,
-      fix: Boolean(args.fix),
+      // MCP: `autoFix` (default true). Back-compat: if `fix` provided, use it when autoFix is undefined.
+      fix:
+        args.autoFix === undefined
+          ? args.fix === undefined
+            ? true
+            : Boolean(args.fix)
+          : Boolean(args.autoFix),
       cache: args.cache !== false,
+      tsConfigFile:
+        typeof (args as any).tsConfigFile === 'string'
+          ? String((args as any).tsConfigFile)
+          : undefined,
     };
-
+    const compact = args.compact === undefined ? true : Boolean(args.compact);
     const result = await validator.validate(options);
+
+    // Compact fileResults by default: include only files with results
+    let out = result as any;
+    if (compact) {
+      const compacted: Record<string, unknown[]> = {};
+      for (const [file, list] of Object.entries(result.fileResults)) {
+        if (list.length > 0) compacted[file] = list;
+      }
+      out = { ...result, fileResults: compacted };
+      if (out.processedFiles) delete out.processedFiles;
+    } else {
+      // Expand to include clean files with empty arrays
+      const expanded: Record<string, unknown[]> = { ...result.fileResults };
+      const allFiles: string[] = (result as any).processedFiles || [];
+      for (const f of allFiles) {
+        if (!Object.prototype.hasOwnProperty.call(expanded, f)) {
+          expanded[f] = [] as unknown[];
+        }
+      }
+      out = { ...result, fileResults: expanded };
+      if (out.processedFiles) delete out.processedFiles;
+    }
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(result, null, 2),
+          text: JSON.stringify(out, null, 2),
         },
       ],
     };
@@ -87,17 +135,55 @@ ${chalk.bold('Examples:')}
       } else {
         // Human-readable output
         if (Object.keys(summary.fileResults).length === 0) {
-          console.info(chalk.green('✨ No files to validate'));
-          process.exit(0);
+          console.info(chalk.green('✨ No issues found'));
+          // Still report tool statuses if any were skipped/failed
+          const failed =
+            summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
+          const skipped =
+            summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
+          if (failed.length > 0 || skipped.length > 0) {
+            console.info(chalk.blue.bold('\n🛠 Tool Status:'));
+            for (const s of [...failed, ...skipped]) {
+              const label =
+                s.status === 'failed'
+                  ? chalk.red('failed')
+                  : chalk.yellow('skipped');
+              const reason = s.reason ? ` (${s.reason})` : '';
+              const err = s.error ? `: ${s.error}` : '';
+              console.info(`  - ${s.tool}: ${label}${reason}${err}`);
+            }
+          }
+          const exitCode = failed.length > 0 ? 2 : 0;
+          process.exit(exitCode);
         }
 
         const hasIssues = Object.values(summary.fileResults).some(
           (r) => r.length > 0,
         );
 
+        const anyFailed = summary.toolStatuses?.some(
+          (s) => s.status === 'failed',
+        );
         if (!hasIssues) {
           console.info(chalk.green('✅ All files passed validation!'));
-          process.exit(0);
+          // Report tool statuses if any skipped/failed
+          const failed =
+            summary.toolStatuses?.filter((s) => s.status === 'failed') || [];
+          const skipped =
+            summary.toolStatuses?.filter((s) => s.status === 'skipped') || [];
+          if (failed.length > 0 || skipped.length > 0) {
+            console.info(chalk.blue.bold('\n🛠 Tool Status:'));
+            for (const s of [...failed, ...skipped]) {
+              const label =
+                s.status === 'failed'
+                  ? chalk.red('failed')
+                  : chalk.yellow('skipped');
+              const reason = s.reason ? ` (${s.reason})` : '';
+              const err = s.error ? `: ${s.error}` : '';
+              console.info(`  - ${s.tool}: ${label}${reason}${err}`);
+            }
+          }
+          process.exit(anyFailed ? 2 : 0);
         }
 
         console.info(chalk.blue.bold('\nValidation Results:\n'));
@@ -174,7 +260,7 @@ ${chalk.bold('Examples:')}
         }
 
         // Exit code
-        process.exit(summary.filesWithErrors > 0 ? 1 : 0);
+        process.exit(summary.filesWithErrors > 0 ? 1 : anyFailed ? 2 : 0);
       }
     } catch (error: Error | unknown) {
       console.error(
@@ -185,33 +271,61 @@ ${chalk.bold('Examples:')}
     }
   }
 
-  getMCPDefinition(): Tool {
-    return {
-      name: this.name,
-      description: this.description,
-      inputSchema: {
-        type: 'object',
-        properties: {
-          files: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Specific files to validate',
-          },
-          glob: {
-            type: 'string',
-            description: 'Glob pattern to match files',
-          },
-          fix: {
-            type: 'boolean',
-            description: 'Automatically fix fixable issues',
-          },
-          cache: {
-            type: 'boolean',
-            description:
-              'Use caching for faster subsequent runs (default: true)',
+  getMCPDefinitions(): Tool[] {
+    return [
+      {
+        name: this.name,
+        description: this.description,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            files: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Specific files to validate',
+            },
+            paths: {
+              type: 'array',
+              items: { type: 'string' },
+              description:
+                'Alternate to files; accepts directories or files (directories will be expanded)',
+            },
+            dir: {
+              type: 'string',
+              description:
+                'Single directory to validate (equivalent to passing it in files)',
+            },
+            glob: {
+              type: 'string',
+              description: 'Glob pattern to match files',
+            },
+            fix: {
+              type: 'boolean',
+              description: 'Automatically fix fixable issues',
+            },
+            autoFix: {
+              type: 'boolean',
+              description:
+                'Enable auto-fix for Prettier and ESLint (default: true). Back-compat alias: fix',
+            },
+            cache: {
+              type: 'boolean',
+              description:
+                'Use caching for faster subsequent runs (default: true)',
+            },
+            tsConfigFile: {
+              type: 'string',
+              description:
+                'Explicit tsconfig.json path to use for TypeScript validation (overrides discovery)',
+            },
+            compact: {
+              type: 'boolean',
+              description:
+                'When true (default), omit files with no results from fileResults',
+            },
           },
         },
       },
-    };
+    ];
   }
 }
