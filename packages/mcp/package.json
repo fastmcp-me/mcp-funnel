@@ -41,6 +41,7 @@
   "dependencies": {
     "@mcp-funnel/commands-core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.18.0",
+    "deepmerge-ts": "^7.0.5",
     "zod": "^4.1.8"
   },
   "devDependencies": {

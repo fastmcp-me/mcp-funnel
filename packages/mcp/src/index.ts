@@ -25,6 +25,12 @@ import { fileURLToPath } from 'url';
 import { logEvent, logError, getServerStreamLogPath } from './logger.js';
 
 import Package from '../package.json';
+export {
+  getUserDir,
+  getUserBasePath,
+  getDefaultProjectConfigPath,
+  resolveMergedProxyConfig,
+} from './config-loader.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOG_DIR = resolve(__dirname, '../.logs');

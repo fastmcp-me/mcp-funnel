@@ -58,9 +58,14 @@ MCP Funnel supports two ways to specify configuration:
    ```
 
 2. **Explicit**: Specify a custom config file path
+
    ```bash
    npx mcp-funnel /path/to/config.json
    ```
+
+3. **User Base Config (merged automatically)**
+
+   If present, `~/.mcp-funnel/.mcp-funnel.json` is merged with the project config. Project values override user base values. Arrays are replaced (no concatenation).
 
 Create a `.mcp-funnel.json` file in your project directory:
 
@@ -158,6 +163,7 @@ MCP Funnel includes internal tools for discovery and bridging. Control which cor
 ```
 
 Available core tools:
+
 - `discover_tools_by_words` - Search for tools by keywords
 - `get_tool_schema` - Get input schema for tools
 - `bridge_tool_request` - Execute tools dynamically
@@ -260,22 +266,25 @@ yarn format         # Auto-format code with Prettier
 MCP Funnel provides a three-tier visibility system for managing which tools are exposed:
 
 ### 1. Always Visible Tools (`alwaysVisibleTools`)
+
 Tools matching these patterns are **always exposed from startup**, even when using dynamic discovery mode. Perfect for critical tools you always want available.
 
 ```json
 {
   "alwaysVisibleTools": [
-    "github__create_pull_request",  // Always show this specific tool
-    "memory__store_*"               // Always show all store operations
+    "github__create_pull_request", // Always show this specific tool
+    "memory__store_*" // Always show all store operations
   ],
-  "enableDynamicDiscovery": true    // Other tools hidden until discovered
+  "enableDynamicDiscovery": true // Other tools hidden until discovered
 }
 ```
 
 ### 2. Discoverable Tools (`exposeTools`)
+
 When `enableDynamicDiscovery: true`, these tools are hidden initially but can be discovered and enabled dynamically. When discovery is disabled, they're visible from startup.
 
 ### 3. Hidden Tools (`hideTools`)
+
 Tools matching these patterns are never exposed, regardless of other settings.
 
 ## 🚀 Hacky Discovery Mode (Ultra-Low Context)

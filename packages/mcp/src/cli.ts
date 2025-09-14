@@ -1,9 +1,10 @@
 import { MCPProxy } from './index.js';
-import { ProxyConfig, ProxyConfigSchema, normalizeServers } from './config.js';
-import { readFileSync, mkdirSync } from 'fs';
+import { ProxyConfig, normalizeServers } from './config.js';
+import { mkdirSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logEvent, logError } from './logger.js';
+import { getUserBasePath, resolveMergedProxyConfig } from './index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LOG_DIR = resolve(__dirname, '../.logs');
@@ -54,17 +55,12 @@ async function main() {
   const configPath = process.argv[2] || '.mcp-funnel.json';
   const resolvedPath = resolve(process.cwd(), configPath);
 
-  let config: ProxyConfig;
+  const projectExists = existsSync(resolvedPath);
+  const userBasePath = getUserBasePath();
+  const userBaseExists = existsSync(userBasePath);
 
-  try {
-    const configFile = readFileSync(resolvedPath, 'utf-8');
-    const rawConfig = JSON.parse(configFile);
-    config = ProxyConfigSchema.parse(rawConfig);
-  } catch (error) {
-    if (!String(error)?.includes('ENOENT'))
-      console.error('Failed to load configuration:', error);
-
-    logError('config-load', error, { path: resolvedPath });
+  if (!projectExists && !userBaseExists) {
+    // Preserve existing UX when nothing is configured
     console.error('\nUsage:');
     console.error(
       '  npx mcp-funnel                    # Uses .mcp-funnel.json from current directory',
@@ -102,6 +98,17 @@ async function main() {
         2,
       ),
     );
+    process.exit(1);
+  }
+
+  let config: ProxyConfig;
+  try {
+    // Merge user base and project config; project overrides user
+    const merged = resolveMergedProxyConfig(resolvedPath);
+    config = merged.config;
+  } catch (error) {
+    console.error('Failed to load configuration:', error);
+    logError('config-load', error, { path: resolvedPath });
     process.exit(1);
   }
 

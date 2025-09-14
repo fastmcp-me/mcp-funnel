@@ -1,7 +1,10 @@
 import { startWebServer } from './index.js';
-import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ProxyConfigSchema, ProxyConfig, normalizeServers } from 'mcp-funnel';
+import {
+  ProxyConfig,
+  normalizeServers,
+  resolveMergedProxyConfig,
+} from 'mcp-funnel';
 
 function loadConfig(): ProxyConfig & {
   servers: Array<{
@@ -13,33 +16,19 @@ function loadConfig(): ProxyConfig & {
 } {
   const configPathEnv = process.env.MCP_FUNNEL_CONFIG_PATH;
   const defaultPath = resolve(process.cwd(), '.mcp-funnel.json');
-  const configPath = configPathEnv ?? defaultPath;
+  const projectPath = configPathEnv ?? defaultPath;
 
-  if (existsSync(configPath)) {
-    try {
-      const txt = readFileSync(configPath, 'utf-8');
-      const parsed = JSON.parse(txt) as unknown;
-
-      // Use ProxyConfigSchema to validate the full configuration
-      const validatedConfig = ProxyConfigSchema.parse(parsed);
-
-      // Normalize servers to array format for consistent return type
-      const normalizedServers = normalizeServers(validatedConfig.servers);
-
-      return {
-        ...validatedConfig,
-        servers: normalizedServers,
-      };
-    } catch (error) {
-      console.error(
-        `[server] Failed to parse config from ${configPath}:`,
-        error,
-      );
-      // Fall back to empty config only if parsing fails
-    }
+  try {
+    const { config } = resolveMergedProxyConfig(projectPath);
+    const normalizedServers = normalizeServers(config.servers);
+    return { ...config, servers: normalizedServers };
+  } catch (error) {
+    console.error(
+      `[server] Failed to load merged config (project: ${projectPath}):`,
+      error,
+    );
+    return { servers: [] };
   }
-
-  return { servers: [] };
 }
 
 async function main() {

@@ -117,6 +117,7 @@ Feature branches may contain temporary coordination files that should not reach 
 **Implementation Options:**
 
 1. **Primary Method - Automated Script**:
+
    ```bash
    # Use the provided squash script
    scripts/squash-merge.sh feat/your-feature-hub
@@ -128,6 +129,7 @@ Feature branches may contain temporary coordination files that should not reach 
    - Provides audit trail and eliminates human error
 
 **Benefits:**
+
 - **Deterministic**: Clear `.feature/` convention
 - **Error prevention**: Automated filtering prevents typos/missed steps
 - **Hybrid safety**: Multiple methods ensure files never leak to develop
@@ -201,6 +203,7 @@ api-docs-agent-1 → documentation-hub → github-discovery-hub → develop
 ```
 
 Each agent:
+
 1. Works in their own worktree
 2. Makes granular commits
 3. Creates PR against their task hub (NOT feature hub)
@@ -210,12 +213,14 @@ Each agent:
 ### Branch Lifecycle
 
 1. **Agent branches**: Delete immediately after merging to hub
+
    ```bash
    git branch -d feat/tool-registry/docs-update
    git push origin --delete feat/tool-registry/docs-update
    ```
 
 2. **Hub branches**: Delete after squash-merging to develop
+
    ```bash
    git branch -d feat/tool-registry-hub
    git push origin --delete feat/tool-registry-hub
@@ -232,6 +237,7 @@ Each agent:
 ### Starting a Feature
 
 1. **Create hub branch**:
+
    ```bash
    git checkout develop
    git pull origin develop
@@ -263,12 +269,14 @@ Each agent:
 ### Before Merging
 
 1. **Run validation** (in each worktree):
+
    ```bash
    yarn validate
    yarn test
    ```
 
 2. **Update from hub** (for agents):
+
    ```bash
    git fetch origin
    git rebase feat/your-feature-hub
@@ -328,6 +336,7 @@ Each agent:
 ### Commits
 
 Use conventional commits:
+
 - `feat:` New feature
 - `fix:` Bug fix
 - `docs:` Documentation only
@@ -340,6 +349,7 @@ Use conventional commits:
 ### Agent-Specific Commit Prefixes
 
 When working in agent branches, prefix commits with your task:
+
 - `feat(api):` for API-related work
 - `feat(ui):` for UI-related work
 - `test(e2e):` for E2E test work

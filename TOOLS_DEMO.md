@@ -81,6 +81,7 @@ Claude will see the tool as `tool__ts-validate` and can call it.
 ## 📝 Example Outputs
 
 ### CLI Output (Human-Readable)
+
 ```
 $ npx mcp-funnel run ts-validate packages/tools/core/src/index.ts
 
@@ -95,15 +96,18 @@ packages/tools/core/src/index.ts:
 ```
 
 ### MCP Output (JSON for AI)
+
 ```json
 {
   "fileResults": {
-    "packages/tools/core/src/index.ts": [{
-      "tool": "prettier",
-      "message": "File was automatically formatted",
-      "severity": "info",
-      "fixedAutomatically": true
-    }]
+    "packages/tools/core/src/index.ts": [
+      {
+        "tool": "prettier",
+        "message": "File was automatically formatted",
+        "severity": "info",
+        "fixedAutomatically": true
+      }
+    ]
   },
   "totalFiles": 1,
   "filesWithErrors": 1
@@ -113,9 +117,11 @@ packages/tools/core/src/index.ts:
 ## 🔧 Available Commands
 
 ### Current Tools
+
 - `ts-validate` - TypeScript, ESLint, and Prettier validation
 
 ### Tool Management
+
 ```bash
 # List available tools
 npx mcp-funnel run --list
