@@ -1,12 +1,12 @@
 {
   "name": "@mcp-funnel/commands-core",
-  "version": "0.0.1",
+  "version": "0.0.5",
   "description": "Core infrastructure for MCP Funnel commands",
   "author": "Christoph Schramm",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/chris-schra/mcp-funnel.git"
+    "url": "git+https://github.com/chris-schra/mcp-funnel.git"
   },
   "keywords": [
     "mcp",
@@ -31,7 +31,8 @@
   "scripts": {
     "build": "tsx build.ts",
     "build:watch": "tsx build.ts --watch",
-    "test": "vitest"
+    "test": "vitest",
+    "release": "yarn npm audit && yarn pack -o out/out.tgz && npm publish --access public ./out/out.tgz"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",

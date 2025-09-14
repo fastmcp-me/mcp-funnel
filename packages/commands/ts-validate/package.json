@@ -1,12 +1,12 @@
 {
   "name": "@mcp-funnel/command-ts-validate",
-  "version": "0.0.1",
+  "version": "0.0.5",
   "description": "TypeScript validation command for MCP Funnel - runs prettier, eslint, and TypeScript validation",
   "author": "Christoph Schramm",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/chris-schra/mcp-funnel.git"
+    "url": "git+https://github.com/chris-schra/mcp-funnel.git"
   },
   "keywords": [
     "mcp",
@@ -34,7 +34,8 @@
   "scripts": {
     "build": "tsx build.ts",
     "build:watch": "tsx build.ts --watch",
-    "test": "vitest"
+    "test": "vitest",
+    "release": "yarn npm audit && yarn pack -o out/out.tgz && npm publish --access public ./out/out.tgz"
   },
   "dependencies": {
     "@mcp-funnel/commands-core": "workspace:^",

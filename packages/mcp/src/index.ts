@@ -339,78 +339,94 @@ export class MCPProxy {
       const __dirname = dirname(__filename);
       const commandsPath = join(__dirname, '../../commands');
 
-      const registry = await discoverCommands(commandsPath);
       const enabledCommands = this._config.commands.list || [];
 
-      // Register each enabled command's tools with cmd__[commandName]__[toolName] prefix
-      for (const commandName of registry.getAllCommandNames()) {
-        const command = registry.getCommandForMCP(commandName);
-        if (
-          command &&
-          (enabledCommands.length === 0 ||
-            enabledCommands.includes(command.name))
-        ) {
-          const mcpDefs = command.getMCPDefinitions();
-          const isSingle = mcpDefs.length === 1;
-          const singleMatchesCommand =
-            isSingle && mcpDefs[0]?.name === command.name;
+      const registerFromRegistry = async (
+        registry: Awaited<ReturnType<typeof discoverCommands>>,
+      ) => {
+        for (const commandName of registry.getAllCommandNames()) {
+          const command = registry.getCommandForMCP(commandName);
+          if (
+            command &&
+            (enabledCommands.length === 0 ||
+              enabledCommands.includes(command.name))
+          ) {
+            const mcpDefs = command.getMCPDefinitions();
+            const isSingle = mcpDefs.length === 1;
+            const singleMatchesCommand =
+              isSingle && mcpDefs[0]?.name === command.name;
 
-          // Register each tool from this command
-          for (const mcpDef of mcpDefs) {
-            // Prefer compact name for single-tool commands where tool name equals command name
-            const useCompact =
-              singleMatchesCommand && mcpDef.name === command.name;
-            // New display naming:
-            // - Single-tool command (tool name == command name): `ts-validate`
-            // - Multi-tool command: `<command>_<tool>` e.g., `npm_lookup`
-            const displayName = useCompact
-              ? `${command.name}`
-              : `${command.name}_${mcpDef.name}`;
+            for (const mcpDef of mcpDefs) {
+              const useCompact =
+                singleMatchesCommand && mcpDef.name === command.name;
+              const displayName = useCompact
+                ? `${command.name}`
+                : `${command.name}_${mcpDef.name}`;
 
-            // Add to command cache with prefix
-            // Commands must have descriptions per their MCP definition
-            if (!mcpDef.description) {
-              throw new Error(
-                `Tool ${mcpDef.name} from command ${command.name} is missing a description`,
-              );
-            }
-            this._toolDescriptionCache.set(displayName, {
-              serverName: 'development-commands',
-              description: mcpDef.description,
-            });
-
-            this._toolDefinitionCache.set(displayName, {
-              serverName: 'development-commands',
-              tool: { ...mcpDef, name: displayName },
-            });
-
-            // Store mapping for execution (canonical name)
-            this._toolMapping.set(displayName, {
-              client: null, // Development commands don't use a client
-              originalName: mcpDef.name,
-              toolName: mcpDef.name, // Store the specific tool name
-              command, // Store the actual command instance
-            });
-
-            // Backward-compatible legacy aliases (old cmd__* names)
-            const legacyLong = `cmd__${command.name}__${mcpDef.name}`;
-            this._toolMapping.set(legacyLong, {
-              client: null,
-              originalName: mcpDef.name,
-              toolName: mcpDef.name,
-              command,
-            });
-            if (useCompact) {
-              const legacyShort = `cmd__${command.name}`;
-              this._toolMapping.set(legacyShort, {
+              if (!mcpDef.description) {
+                throw new Error(
+                  `Tool ${mcpDef.name} from command ${command.name} is missing a description`,
+                );
+              }
+              this._toolDescriptionCache.set(displayName, {
+                serverName: 'development-commands',
+                description: mcpDef.description,
+              });
+              this._toolDefinitionCache.set(displayName, {
+                serverName: 'development-commands',
+                tool: { ...mcpDef, name: displayName },
+              });
+              this._toolMapping.set(displayName, {
                 client: null,
                 originalName: mcpDef.name,
                 toolName: mcpDef.name,
                 command,
               });
+              const legacyLong = `cmd__${command.name}__${mcpDef.name}`;
+              this._toolMapping.set(legacyLong, {
+                client: null,
+                originalName: mcpDef.name,
+                toolName: mcpDef.name,
+                command,
+              });
+              if (useCompact) {
+                const legacyShort = `cmd__${command.name}`;
+                this._toolMapping.set(legacyShort, {
+                  client: null,
+                  originalName: mcpDef.name,
+                  toolName: mcpDef.name,
+                  command,
+                });
+              }
             }
           }
         }
+      };
+
+      // 1) Bundled commands
+      const bundledRegistry = await discoverCommands(commandsPath);
+      await registerFromRegistry(bundledRegistry);
+
+      // 2) Zero-config auto-scan for installed command packages under node_modules/@mcp-funnel
+      try {
+        const scopeDir = join(process.cwd(), 'node_modules', '@mcp-funnel');
+        const { readdirSync } = await import('fs');
+        const entries = readdirSync(scopeDir, { withFileTypes: true });
+        const candidateDirs = entries
+          .filter(
+            (e: any) => e.isDirectory?.() && e.name.startsWith('command-'),
+          )
+          .map((e: any) => join(scopeDir, e.name));
+        for (const dir of candidateDirs) {
+          try {
+            const reg = await discoverCommands(dir);
+            await registerFromRegistry(reg);
+          } catch (e) {
+            console.warn(`[proxy] Failed to load command from ${dir}:`, e);
+          }
+        }
+      } catch (_e) {
+        // No scope directory or unreadable; ignore
       }
     } catch (error) {
       console.error('Failed to load development commands:', error);

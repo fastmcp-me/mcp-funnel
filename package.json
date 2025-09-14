@@ -1,12 +1,12 @@
 {
   "name": "mcp-funnel-monorepo",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "author": "Christoph Schramm",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/chris-schra/mcp-funnel.git"
+    "url": "git+https://github.com/chris-schra/mcp-funnel.git"
   },
   "workspaces": [
     "packages/**/*"
@@ -14,6 +14,7 @@
   "type": "module",
   "scripts": {
     "build": "yarn workspaces foreach -v --topological-dev -p -A run build",
+    "release": "yarn build && yarn workspaces foreach -v --topological-dev -p -A run release",
     "prettier": "prettier -c \"**/*.{ts,tsx,js,json,md}\"",
     "lint": "eslint --ext .ts,.tsx",
     "validate": "tsx packages/mcp/src/cli.ts run ts-validate --fix",

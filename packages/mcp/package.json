@@ -1,12 +1,12 @@
 {
   "name": "mcp-funnel",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "MCP proxy that aggregates multiple servers with tool filtering - stop carrying 70k tokens of tools you'll never use",
   "author": "Christoph Schramm",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/chris-schra/mcp-funnel.git"
+    "url": "git+https://github.com/chris-schra/mcp-funnel.git"
   },
   "keywords": [
     "mcp",
@@ -36,7 +36,7 @@
     "dev": "tsx src/index.ts",
     "build": "tsx build.ts",
     "build:watch": "tsx build.ts --watch",
-    "release": "yarn npm audit && npm publish --access public"
+    "release": "yarn npm audit && yarn pack -o out/out.tgz && npm publish --access public ./out/out.tgz"
   },
   "dependencies": {
     "@mcp-funnel/commands-core": "workspace:*",

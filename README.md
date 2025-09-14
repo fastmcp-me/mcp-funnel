@@ -216,6 +216,41 @@ npx mcp-funnel run npm search "test framework"
 
 For detailed documentation, see [NPM Command README](packages/commands/npm-lookup/README.md).
 
+## ➕ Adding Command Packages (Zero‑Config)
+
+MCP Funnel can load command packages installed in your project automatically.
+
+- Install a command package in your project (dev dependency is fine):
+
+```bash
+yarn add -D @mcp-funnel/command-npm-lookup
+```
+
+- Ensure commands are enabled in `.mcp-funnel.json`:
+
+```json
+{
+  "commands": {
+    "enabled": true,
+    "list": ["npm", "ts-validate"]
+  }
+}
+```
+
+What happens next:
+
+- On startup, MCP Funnel auto‑scans `node_modules/@mcp-funnel/command-*` and loads matching packages.
+- The `commands.list` array (if present) filters by command name (e.g. `"npm"`) before tools are exposed.
+- Tools follow the compact naming:
+  - Single‑tool commands: `ts-validate`
+  - Multi‑tool commands: `<command>_<tool>` (e.g., `npm_lookup`, `npm_search`)
+
+Notes:
+
+- No extra config is required beyond enabling `commands.enabled`.
+- To limit which commands load, specify `commands.list`. If omitted, all discovered commands are exposed.
+- Existing `exposeTools`/`hideTools` still apply (e.g., `development-commands__npm_*`).
+
 ### Multi-Tool Commands
 
 Commands can expose multiple tools, as demonstrated by the NPM command. This pattern allows:

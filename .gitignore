@@ -47,3 +47,5 @@ haino.config.json
 
 .logs
 *.tsbuildinfo
+
+out.tgz
