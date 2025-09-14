@@ -275,7 +275,7 @@ Add to your configuration (e.g. `path/to/your/project/.mcp.json`):
   "mcpServers": {
     "mcp-funnel": {
       "command": "npx",
-      "args": ["mcp-funnel"]
+      "args": ["-y" ,"mcp-funnel"]
     }
   }
 }
@@ -288,7 +288,7 @@ This will use `.mcp-funnel.json` from your current working directory. To use a c
   "mcpServers": {
     "mcp-funnel": {
       "command": "npx",
-      "args": ["mcp-funnel", "/path/to/your/.mcp-funnel.json"]
+      "args": ["-y", "mcp-funnel", "/path/to/your/.mcp-funnel.json"]
     }
   }
 }
@@ -303,7 +303,7 @@ Add to your configuration (e.g. `path/to/your/project/.gemini/settings.json`):
   "mcpServers": {
     "mcp-funnel": {
       "command": "npx",
-      "args": ["mcp-funnel"]
+      "args": ["-y", "mcp-funnel"]
     }
   }
 }
@@ -316,7 +316,7 @@ Add to your configuration (e.g. `~/.codex/config.toml`):
 ```toml
 [mcp_servers.mcp-funnel]
 command = "npx"
-args = ["mcp-funnel"]
+args = ["-y", "mcp-funnel"]
 ```
 
 ### Example Prompts
